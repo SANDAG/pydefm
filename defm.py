@@ -23,6 +23,7 @@ population = extract.create_df('population', 'population_table')
 # years to be used in model
 years = util.yaml_to_dict('model_config.yml', 'years')
 
+population_summary = []
 # iterate over all years
 for index, yr in enumerate(range(years['y1'],years['yf'] + 1)):
     print ('{} {}'.format(index, yr))
@@ -47,8 +48,11 @@ for index, yr in enumerate(range(years['y1'],years['yf'] + 1)):
     # PREDICTED POPULATION
     # Update base population by adding in-migrating population and newborns
     population = compute.new_pop(births,aged_pop)
+    population_summary.append({'Year': yr, 'Population': population['persons'].sum()})
+
 
 # database logging of results
 population['yr'] = yr
-log.insert_run(population)
+summary_df = pd.DataFrame(population_summary)
+log.insert_run(population,summary_df)
 

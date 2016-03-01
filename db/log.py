@@ -5,7 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
 
 
-def insert_run(pop_df):
+def insert_run(pop_df,pop_summary):
     Base = declarative_base()
     class Run(Base):
         __tablename__ = 'run_log'
@@ -49,7 +49,8 @@ def insert_run(pop_df):
 
     # Insert prediction in the population table
     pop_df['run_id'] = model_run_id # foreign key to run log table
-    pop_df = pop_df.reset_index(drop=False)
-    pop_df.to_sql(name='population', con=engine, if_exists = 'append', index=False)
+    pop_summary['run_id'] = model_run_id # foreign key to run log table
+    pop_df.to_sql(name='population', con=engine, if_exists = 'append', index=True)
+    pop_summary.to_sql(name='summary', con=engine, if_exists = 'append', index=True) # change to True
 
     session.commit()
