@@ -5,52 +5,48 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
 
 
-def insert_run(pop_df,pop_summary):
+def new_run(db_name):
     Base = declarative_base()
+    table_name = 'run_log'
     class Run(Base):
-        __tablename__ = 'run_log'
-        # Here we define columns for the run log
-        # Notice that each column is also a normal Python instance attribute.
+        __tablename__ = table_name
+        # define columns for the table
         id = Column(Integer, primary_key=True)
-        base_id = Column(Integer)
-        birth_rate_id = Column(Integer)
-        death_rate_id = Column(Integer)
-        migration_rate_id = Column(Integer)
-        householder_rate_id = Column(Integer)
-        version_id = Column(Integer)
-        notes = Column(String(250))
+        base_rate_version = Column(Integer)
+        birth_rate_version = Column(Integer)
+        death_rate_version = Column(Integer)
+        migration_rate_version = Column(Integer)
+        householder_rate_version = Column(Integer)
 
-    engine = create_engine('sqlite:///model_run.db')
+    engine = create_engine('sqlite:///'+ db_name)
 
-    if not engine.has_table('run_log'):
+    if not engine.has_table(table_name):
         Base.metadata.create_all(engine)
 
     db_session = sessionmaker(bind=engine)
-    # A DBSession() instance establishes all conversations with the database
-    # and represents a "staging zone" for all the objects loaded into the
-    # database session object. Any change made against the objects in the
-    # session won't be persisted into the database until you call
-    # session.commit(). If you're not happy about the changes, you can
-    # revert all of them back to the last commit by calling
-    # session.rollback()
     session = db_session()
 
-    # Insert a run in the run log table
+    # Rate versions from yml file
     rate_versions = util.yaml_to_dict('model_config.yml', 'rate_versions')
 
-    new_run = Run(base_id=rate_versions['population'],
-                          birth_rate_id=rate_versions['birth'],
-                          death_rate_id=rate_versions['death'],
-                          migration_rate_id=rate_versions['migration'],
-                          householder_rate_id=rate_versions['householder'])
-    session.add(new_run)
+    # Insert versions in database
+    model_run = Run(
+        base_rate_version=rate_versions['population'],
+        birth_rate_version=rate_versions['birth'],
+        death_rate_version=rate_versions['death'],
+        migration_rate_version=rate_versions['migration'],
+        householder_rate_version=rate_versions['householder'])
+
+    session.add(model_run)
     session.commit()
-    model_run_id = new_run.id
+    run_id = model_run.id
+    return run_id
+
+
+def insert_run(db_name,model_run_id,df_results,table_name):
+
+    engine = create_engine('sqlite:///'+ db_name)
 
     # Insert prediction in the population table
-    pop_df['run_id'] = model_run_id # foreign key to run log table
-    pop_summary['run_id'] = model_run_id # foreign key to run log table
-    pop_df.to_sql(name='population', con=engine, if_exists = 'append', index=True)
-    pop_summary.to_sql(name='summary', con=engine, if_exists = 'append', index=True) # change to True
-
-    session.commit()
+    df_results['run_id'] = model_run_id # foreign key to run log table
+    df_results.to_sql(name=table_name, con=engine, if_exists = 'append', index=True)

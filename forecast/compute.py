@@ -4,6 +4,7 @@ Calculate population changes based on migration, birth, and death rates
 
 import numpy as np
 import pandas as pd
+from db import log
 
 
 def rates_for_yr(pop,rates,year):
@@ -106,7 +107,7 @@ def age_the_pop(df):
     return pop
 
 
-def births_all(df):
+def births_all(df,db_id,sim_year):
     """
     Calculate births for given year
     Predict male or female birth by random number
@@ -126,10 +127,14 @@ def births_all(df):
     df['randomNumCol'] = 0.5 * np.random.randint(2,size = df.shape[0])  # 0 or 0.5
     df['births_m'] = (df['births_m_float'] + df['randomNumCol']).astype(int)
     df['births_f'] = df['births_rounded'] - df['births_m']
+    df2 = df.copy()
+    df2 =df2[df2.yr.notnull()] # remove rows with no birth rate
+    df2 = df2.drop('mig_in_net', 1)
+    log.insert_run('births_all.db',db_id,df2,'births_all_' + str(sim_year))
     return df
 
 
-def births_sum(df):
+def births_sum(df,db_id,sim_year):
     """
     Sum births over all the ages in a given cohort
     Set birth age to zero and reset DataFrame index
@@ -144,16 +149,18 @@ def births_sum(df):
 
     """
     df = df.reset_index(drop=False)
-    male_births = pd.DataFrame({'persons' : df['births_m'].groupby([df['race_ethn'],df['type'],df['mildep']]).sum()}).reset_index()
+    male_births = pd.DataFrame({'persons' : df['births_m'].groupby([df['yr'],df['race_ethn'],df['type'],df['mildep']]).sum()}).reset_index()
     male_births['sex'] = 'M'
     male_births['age'] = 0
     male_births = male_births.set_index(['age','race_ethn','sex'])
-    female_births = pd.DataFrame({'persons' : df['births_f'].groupby([df['race_ethn'],df['type'],df['mildep']]).sum()}).reset_index()
+    female_births = pd.DataFrame({'persons' : df['births_f'].groupby([df['yr'],df['race_ethn'],df['type'],df['mildep']]).sum()}).reset_index()
     female_births['sex'] = 'F'
     female_births['age'] = 0
     female_births = female_births.set_index(['age','race_ethn','sex'])
     births_age0 = pd.concat([male_births, female_births], axis=0)
     births_age0['households'] = 0 # need to fix this.  temp IGNORE
+    log.insert_run('births_sum.db',db_id,births_age0,'births_sum_' + str(sim_year))
+    births_age0 = births_age0.drop('yr', 1)
     return births_age0
 
 

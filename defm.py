@@ -13,9 +13,11 @@ os.chdir(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())
 # set console display to show MultiIndex for every row
 pd.set_option('display.multi_sparse', False)
 
+db_run_id = log.new_run('model_summary.db')
+
 # load rates and base population to pandas DataFrame
 mig_rates = extract.create_df('migration', 'rate_table')
-mig_rates = util.apply_pivot(mig_rates) # pivot so 4 mig rates in columns
+mig_rates = util.apply_pivot(mig_rates)  # pivot so 4 mig rates in columns
 birth_rates = extract.create_df('birth', 'rate_table')
 death_rates = extract.create_df('death', 'rate_table')
 population = extract.create_df('population', 'population_table')
@@ -36,9 +38,9 @@ for index, yr in enumerate(range(years['y1'],years['yf'] + 1)):
     # BIRTH
     # Apply rates for birth to base population
     yr_birth = compute.rates_for_yr(non_mig,birth_rates,yr)  # simulated yr
-    births_per_cohort = compute.births_all(yr_birth)  # newborn population
+    births_per_cohort = compute.births_all(yr_birth,db_run_id,yr)  # newborn population
     # sum newborn population across cohorts
-    births = compute.births_sum(births_per_cohort)
+    births = compute.births_sum(births_per_cohort,db_run_id,yr)
     # DEATH
     # Apply rates for death to base population
     yr_death = compute.rates_for_yr(non_mig,death_rates,yr)  # simulated yr
@@ -54,5 +56,6 @@ for index, yr in enumerate(range(years['y1'],years['yf'] + 1)):
 # database logging of results
 population['yr'] = yr
 summary_df = pd.DataFrame(population_summary)
-log.insert_run(population,summary_df)
+log.insert_run('model_summary.db',db_run_id,population,'population')
+log.insert_run('model_summary.db',db_run_id,summary_df,'summary')
 
