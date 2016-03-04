@@ -28,7 +28,7 @@ def rates_for_yr(pop,rates,year):
     return pop_w_rates
 
 
-def net_mig(df):
+def net_mig(df, db_id, sim_year):
     """
     Calculate net migration by applying rates to population
 
@@ -47,6 +47,8 @@ def net_mig(df):
     df['mig_in_for'] = (df['persons'] * df['FIN']).round()
     df['mig_out_net'] = df['mig_out_dom'] + df['mig_out_for']
     df['mig_in_net'] = df['mig_in_dom'] + df['mig_in_for']
+    log.insert_run('migration.db',db_id,df,'migration_' + str(sim_year))
+
     return df
 
 
@@ -56,14 +58,18 @@ def non_mig(df):
 
     Parameters
     ----------
-    pandas DataFrame : net migration population for current yr
+    df : pandas.DataFrame
+        Net migration population for current yr
+        Should contain the columns for population
+        and migration out
 
     Returns
     -------
-    pandas DataFrame : Non-migrating population per cohort for a given year
+    df : pandas DataFrame
+        Non-migrating population per cohort for a given year
 
     """
-    df['non_mig_pop'] = df['persons'] - df['mig_out_net']
+    df['non_mig_pop'] = np.where(((df['type']=='HP') & (df['mildep'] == 'Y')), df['persons'], df['persons'] - df['mig_out_net'])
     df = df[['type','mildep','non_mig_pop','households','mig_in_net']]
     return df
 
@@ -107,7 +113,7 @@ def age_the_pop(df):
     return pop
 
 
-def births_all(df,db_id,sim_year):
+def births_all(df, db_id, sim_year):
     """
     Calculate births for given year
     Predict male or female birth by random number

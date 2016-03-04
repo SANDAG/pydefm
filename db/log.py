@@ -18,7 +18,7 @@ def new_run(db_name):
         migration_rate_version = Column(Integer)
         householder_rate_version = Column(Integer)
 
-    engine = create_engine('sqlite:///'+ db_name)
+    engine = create_engine('sqlite:///' + 'results/' + db_name)
 
     if not engine.has_table(table_name):
         Base.metadata.create_all(engine)
@@ -45,7 +45,7 @@ def new_run(db_name):
 
 def insert_run(db_name,model_run_id,df_results,table_name):
 
-    engine = create_engine('sqlite:///'+ db_name)
+    engine = create_engine('sqlite:///'+ 'results/' + db_name)
 
     # Insert prediction in the population table
     df_results['run_id'] = model_run_id # foreign key to run log table
