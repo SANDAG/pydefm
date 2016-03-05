@@ -20,6 +20,11 @@ os.chdir(os.path.dirname(full_path))
 pd.set_option('display.multi_sparse', False)
 
 
+# Start model run using rate versions in model_config.yml
+
+# record rate versions in result database
+db_run_id = log.new_run('model_summary.db') # primary key for this run
+
 # Load base population and rates.
 
 # pandas DataFrame from SQL query (rates for all years)
@@ -29,8 +34,7 @@ birth_rates = extract.create_df('birth', 'rate_table')
 death_rates = extract.create_df('death', 'rate_table')
 population = extract.create_df('population', 'population_table')
 
-# record rate versions in result database
-db_run_id = log.new_run('model_summary.db') # primary key for this run
+log.insert_run('base_population.db',db_run_id,population,'base_population')
 
 # years to be used in model
 years = util.yaml_to_dict('model_config.yml', 'years')
@@ -46,25 +50,25 @@ for index, yr in enumerate(range(years['y1'],years['yf'] + 1)):
     # Apply rates for in-migration & out-migration to base population
 
     # rates for simulated yr
-    yr_mig = compute.rates_for_yr(population,mig_rates,yr)
+    yr_mig = compute.rates_for_yr(population, mig_rates, yr)
 
     # in & out migrating population
-    net_mig_pop = compute.net_mig(yr_mig,db_run_id,yr)
+    net_mig_pop = compute.net_mig(yr_mig, db_run_id, yr)
 
     # non-migrating population
-    non_mig = compute.non_mig(net_mig_pop)
-
+    non_mig = compute.non_mig(net_mig_pop, db_run_id, yr)
 
     # BIRTH
     # Apply rates for birth to base population
     yr_birth = compute.rates_for_yr(non_mig,birth_rates,yr)  # simulated yr
-    births_per_cohort = compute.births_all(yr_birth,db_run_id,yr)  # newborn population
+    births_per_cohort = compute.births_all(yr_birth, db_run_id, yr)  # newborn population
     # sum newborn population across cohorts
-    births = compute.births_sum(births_per_cohort,db_run_id,yr)
+    births = compute.births_sum(births_per_cohort, db_run_id, yr)
+
     # DEATH
     # Apply rates for death to base population
     yr_death = compute.rates_for_yr(non_mig,death_rates,yr)  # simulated yr
-    survived_pop = compute.deaths(yr_death)  # deceased population
+    survived_pop = compute.deaths(yr_death, db_run_id, yr)  # deceased population
     # age population by one year
     aged_pop = compute.age_the_pop(survived_pop)
     # PREDICTED POPULATION

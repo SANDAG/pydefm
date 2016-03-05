@@ -34,11 +34,17 @@ def net_mig(df, db_id, sim_year):
 
     Parameters
     ----------
-    pandas DataFrame : With population and migration rates for current yr
+    df : pandas.DataFrame
+        with population and migration rates for current yr
+    db_id : int
+        primary key for current simulation
+    sim_year : int
+        year being simulated
 
     Returns
     -------
-    pandas DataFrame : In and out migrating population per cohort for a given year
+    df : pandas DataFrame
+        In and out migrating population per cohort for a given year
 
     """
     df['mig_out_dom'] = (df['persons'] * df['DOUT']).round()
@@ -47,34 +53,43 @@ def net_mig(df, db_id, sim_year):
     df['mig_in_for'] = (df['persons'] * df['FIN']).round()
     df['mig_out_net'] = df['mig_out_dom'] + df['mig_out_for']
     df['mig_in_net'] = df['mig_in_dom'] + df['mig_in_for']
-    log.insert_run('migration.db',db_id,df,'migration_' + str(sim_year))
+    log.insert_run('net_migration.db',db_id,df,'migration_' + str(sim_year))
 
     return df
 
 
-def non_mig(df):
+def non_mig(df, db_id, sim_year):
     """
     Calculate non-migration population by subtracting net out migrating from population
 
     Parameters
     ----------
     df : pandas.DataFrame
-        Net migration population for current yr
-        Should contain the columns for population
-        and migration out
+        with population for current yr
+        and population migrating in & out
+    db_id : int
+        primary key for current simulation
+    sim_year : int
+        year being simulated
 
     Returns
     -------
     df : pandas DataFrame
-        Non-migrating population per cohort for a given year
+        non-migrating population per cohort for a given year
 
     """
-    df['non_mig_pop'] = np.where(((df['type']=='HP') & (df['mildep'] == 'Y')), df['persons'], df['persons'] - df['mig_out_net'])
+    # special case for military: no migration
+    # otherwise: subtract migrating out population
+    df['non_mig_pop'] = np.where(
+        ((df['type'] == 'HP') & (df['mildep'] == 'Y')), # special case
+                                 df['persons'],  # no migration
+                                 df['persons'] - df['mig_out_net'])  # else
+    log.insert_run('non_migrating_pop.db',db_id,df,'non_migrating_' + str(sim_year))
     df = df[['type','mildep','non_mig_pop','households','mig_in_net']]
     return df
 
 
-def deaths(df):
+def deaths(df, db_id, sim_year):
     """
      Calculate deaths by applying death rates to non-migrating population for given year
 
@@ -88,7 +103,16 @@ def deaths(df):
 
     """
     df['deaths'] = (df['non_mig_pop'] * df['death_rate']).round()
-    df['survived'] = df['non_mig_pop'] - df['deaths']
+
+    #df['survived'] = df['non_mig_pop'] - df['deaths']
+
+    # special case for military: deaths not carried over into next year
+    # otherwise: subtract deaths from non-migrating population
+    df['survived'] = np.where(
+        ((df['type'] == 'HP') & (df['mildep'] == 'Y')),  # special case
+                                 df['non_mig_pop'],  # no deaths
+                                  df['non_mig_pop'] - df['deaths'])  # else
+    log.insert_run('deaths.db',db_id,df,'survived_' + str(sim_year))
     df = df.drop(['deaths','yr','death_rate','non_mig_pop'], 1)
     return df
 
@@ -108,6 +132,7 @@ def age_the_pop(df):
     """
     df = df.reset_index(drop=False)
     df['age'] = df['age'] + 1
+    df.loc[((df["type"] =='HP') & (df["mildep"] =='Y')) , 'age'] = df['age'] - 1
     df = df[df.age < 101]
     pop = df.set_index(['age','race_ethn','sex'])
     return pop
@@ -139,7 +164,6 @@ def births_all(df, db_id, sim_year):
     log.insert_run('births_all.db',db_id,df2,'births_all_' + str(sim_year))
     return df
 
-
 def births_sum(df,db_id,sim_year):
     """
     Sum births over all the ages in a given cohort
@@ -167,6 +191,8 @@ def births_sum(df,db_id,sim_year):
     births_age0['households'] = 0 # need to fix this.  temp IGNORE
     log.insert_run('births_sum.db',db_id,births_age0,'births_sum_' + str(sim_year))
     births_age0 = births_age0.drop('yr', 1)
+    births_age0.loc[(births_age0["type"] =='HP') & (births_age0["mildep"] =='Y') , 'persons'] = -5
+    births_age0 = births_age0[births_age0.persons != -5]
     return births_age0
 
 
@@ -186,7 +212,11 @@ def new_pop(newborn,aged):
     pandas DataFrame :  Newborn Population + Survived Population
 
     """
-    aged['persons'] = aged['survived'] + aged['mig_in_net']
+    #aged['persons'] = aged['survived'] + aged['mig_in_net']
+    aged['persons'] = np.where(
+        ((aged['type'] == 'HP') & (aged['mildep'] == 'Y')), # special case
+                                 aged['survived'],  # no in migration
+                                 aged['survived'] + aged['mig_in_net'])  # else
     aged = aged.drop(['survived','mig_in_net'], 1)
     pop = pd.concat([newborn,aged])
     return pop
