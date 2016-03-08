@@ -7,24 +7,28 @@ import pandas as pd
 from db import log
 
 
-def rates_for_yr(pop,rates,year):
+def rates_for_yr(population, rates_all_years, sim_year):
     """
     Filter specific rates for a given year and join with population
     by cohort
 
     Parameters
     ----------
-    pandas DataFrame : population
-    pandas DataFrame : rates, to be filtered by year
-    int: year for simulation
+    population : pandas.DataFrame
+        population for simulated year, starting with base population
+    rates_all_years : pandas DataFrame
+        rates, to be filtered by year
+    sim_year : int
+        year being simulated
 
     Returns
     -------
-    pandas DataFrame : rates for a given year and population for each cohort
+    pop_w_rates : pandas DataFrame
+        rates for a given year and population for each cohort
 
     """
-    rates_yr = rates[rates['yr']== year]
-    pop_w_rates = pop.join(rates_yr)
+    rates_yr = rates_all_years[rates_all_years['yr']== sim_year]
+    pop_w_rates = population.join(rates_yr)
     return pop_w_rates
 
 
@@ -45,14 +49,28 @@ def net_mig(df, db_id, sim_year):
     -------
     df : pandas DataFrame
         In and out migrating population per cohort for a given year
+            population x  migration rate, where rates are:
+                domestic in (DIN), domestic out (DOUT),
+                foreign in (FIN), and foreign out (FOUT)
 
     """
-    df['mig_out_dom'] = (df['persons'] * df['DOUT']).round()
-    df['mig_out_for'] = (df['persons'] * df['FOUT']).round()
-    df['mig_in_dom'] = (df['persons'] * df['DIN']).round()
-    df['mig_in_for'] = (df['persons'] * df['FIN']).round()
-    df['mig_out_net'] = df['mig_out_dom'] + df['mig_out_for']
-    df['mig_in_net'] = df['mig_in_dom'] + df['mig_in_for']
+    # for special cases, no migration thus set rates to zero
+
+    # when group quarters = "HP" and mildep = "Y"
+    df.loc[((df.type == 'HP') & (df.mildep == 'Y')),['DIN','DOUT','FIN','FOUT']] = 0
+
+    # when group quarters equal COL, INS, MIL, or OTH
+    df.loc[df['type'].isin(['COL','INS','MIL','OTH']),['DIN','DOUT','FIN','FOUT']] = 0
+
+    # calculate net migration
+    df['mig_Dout'] = (df['persons'] * df['DOUT']).round()
+    df['mig_Fout'] = (df['persons'] * df['FOUT']).round()
+    df['mig_Din'] = (df['persons'] * df['DIN']).round()
+    df['mig_Fin'] = (df['persons'] * df['FIN']).round()
+    df['mig_out_net'] = df['mig_Dout'] + df['mig_Fout']
+    df['mig_in_net'] = df['mig_Din'] + df['mig_Fin']
+
+    # record net migration in result database
     log.insert_run('net_migration.db',db_id,df,'migration_' + str(sim_year))
 
     return df
@@ -78,13 +96,12 @@ def non_mig(df, db_id, sim_year):
         non-migrating population per cohort for a given year
 
     """
-    # special case for military: no migration
-    # otherwise: subtract migrating out population
-    df['non_mig_pop'] = np.where(
-        ((df['type'] == 'HP') & (df['mildep'] == 'Y')), # special case
-                                 df['persons'],  # no migration
-                                 df['persons'] - df['mig_out_net'])  # else
+    df['non_mig_pop'] = df['persons'] - df['mig_out_net']
+
     log.insert_run('non_migrating_pop.db',db_id,df,'non_migrating_' + str(sim_year))
+    # drop year column in order to join with birth and death rates
+    # which have a year column
+    # df = df.drop(['yr'], 1)
     df = df[['type','mildep','non_mig_pop','households','mig_in_net']]
     return df
 
@@ -103,8 +120,7 @@ def deaths(df, db_id, sim_year):
 
     """
     df['deaths'] = (df['non_mig_pop'] * df['death_rate']).round()
-
-    #df['survived'] = df['non_mig_pop'] - df['deaths']
+    log.insert_run('deaths.db',db_id,df,'survived_' + str(sim_year))
 
     # special case for military: deaths not carried over into next year
     # otherwise: subtract deaths from non-migrating population
@@ -112,7 +128,14 @@ def deaths(df, db_id, sim_year):
         ((df['type'] == 'HP') & (df['mildep'] == 'Y')),  # special case
                                  df['non_mig_pop'],  # no deaths
                                   df['non_mig_pop'] - df['deaths'])  # else
-    log.insert_run('deaths.db',db_id,df,'survived_' + str(sim_year))
+
+    # special case for group quarters:
+    # deaths not carried over into next year
+    df['survived'] = np.where(
+        df['type'].isin(['COL','INS','MIL','OTH']),  # special case
+                                 df['non_mig_pop'],  # no deaths carried over
+                                  df['survived'])
+
     df = df.drop(['deaths','yr','death_rate','non_mig_pop'], 1)
     return df
 
@@ -152,6 +175,10 @@ def births_all(df, db_id, sim_year):
     pandas DataFrame : male and female births by cohort (race_ethn and age)
 
     """
+    # set birth rate to zero for special case
+    # when group quarters in ("COL","INS","MIL","OTH")
+    df.loc[df['type'].isin(['COL','INS','MIL','OTH']),['birth_rate']] = 0
+
     df['births_rounded'] = np.round(df['non_mig_pop'] * df['birth_rate']).fillna(0.0).astype(int)
     df['births_m_float'] = df['births_rounded'] * 0.51  # float, 51% male
     np.random.seed(2010)
@@ -163,6 +190,7 @@ def births_all(df, db_id, sim_year):
     df2 = df2.drop('mig_in_net', 1)
     log.insert_run('births_all.db',db_id,df2,'births_all_' + str(sim_year))
     return df
+
 
 def births_sum(df,db_id,sim_year):
     """
@@ -188,11 +216,13 @@ def births_sum(df,db_id,sim_year):
     female_births['age'] = 0
     female_births = female_births.set_index(['age','race_ethn','sex'])
     births_age0 = pd.concat([male_births, female_births], axis=0)
-    births_age0['households'] = 0 # need to fix this.  temp IGNORE
+    births_age0['households'] = 0  # need to fix this.  temp IGNORE
     log.insert_run('births_sum.db',db_id,births_age0,'births_sum_' + str(sim_year))
     births_age0 = births_age0.drop('yr', 1)
-    births_age0.loc[(births_age0["type"] =='HP') & (births_age0["mildep"] =='Y') , 'persons'] = -5
-    births_age0 = births_age0[births_age0.persons != -5]
+    # keep rows in which either type != 'HP' OR mildep != 'Y'
+    # which results in dropping rows  where type = 'HP' AND mildep = 'Y'
+    births_age0 = births_age0[((births_age0.type != 'HP') | (births_age0.mildep != 'Y'))]
+
     return births_age0
 
 

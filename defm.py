@@ -21,25 +21,34 @@ pd.set_option('display.multi_sparse', False)
 
 
 # Start model run using rate versions in model_config.yml
+#   note: rate versions refer to original data source
 
 # record rate versions in result database
 db_run_id = log.new_run('model_summary.db') # primary key for this run
 
+
 # Load base population and rates.
 
-# pandas DataFrame from SQL query (rates for all years)
+# SQL query to pandas DataFrame (returns rates for all years)
+#      columns:  'age', 'race_ethn', 'sex' (cohort), 'rate', 'year'
 mig_rates = extract.create_df('migration', 'rate_table')
+# migration rates: domestic in, domestic out, foreign in, foreign out
 mig_rates = util.apply_pivot(mig_rates)  # pivot df so 4 mig rates in cols
 birth_rates = extract.create_df('birth', 'rate_table')
 death_rates = extract.create_df('death', 'rate_table')
+
+# pandas DataFrame from SQL query (base population)
+#      columns:  'age', 'race_ethn', 'sex' (cohort),
+#       'gq.type', 'mildep','persons', 'households'
 population = extract.create_df('population', 'population_table')
 
-log.insert_run('base_population.db',db_run_id,population,'base_population')
+# base population to result database
+log.insert_run('base_population.db', db_run_id, population,'base_population')
 
 # years to be used in model
 years = util.yaml_to_dict('model_config.yml', 'years')
 
-population_summary = []  # list population total by year
+population_summary = []  # initialize population by year list
 
 # iterate over all years
 for index, yr in enumerate(range(years['y1'],years['yf'] + 1)):
@@ -49,7 +58,8 @@ for index, yr in enumerate(range(years['y1'],years['yf'] + 1)):
     # MIGRATION
     # Apply rates for in-migration & out-migration to base population
 
-    # rates for simulated yr
+    # get rates for simulated yr in loop
+    # join DataFrame with population
     yr_mig = compute.rates_for_yr(population, mig_rates, yr)
 
     # in & out migrating population
@@ -60,7 +70,7 @@ for index, yr in enumerate(range(years['y1'],years['yf'] + 1)):
 
     # BIRTH
     # Apply rates for birth to base population
-    yr_birth = compute.rates_for_yr(non_mig,birth_rates,yr)  # simulated yr
+    yr_birth = compute.rates_for_yr(non_mig, birth_rates, yr)  # simulated yr
     births_per_cohort = compute.births_all(yr_birth, db_run_id, yr)  # newborn population
     # sum newborn population across cohorts
     births = compute.births_sum(births_per_cohort, db_run_id, yr)

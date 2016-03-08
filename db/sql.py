@@ -1,7 +1,8 @@
 """
 SQL queries to get input data for model
-variables: table names and rate versions(%s)
-values: declared in "model_config_yml"
+    variables (%s): table names and rate versions(%s)
+    values: declared in "model_config_yml"
+Note: rate versions refer to different data sources
 """
 
 # BASE POPULATION (2010)
