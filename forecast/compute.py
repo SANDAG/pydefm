@@ -14,7 +14,7 @@ def rates_for_yr(population, rates_all_years, sim_year):
 
     Parameters
     ----------
-    population : pandas.DataFrame
+    population : pandas DataFrame
         population for simulated year, starting with base population
     rates_all_years : pandas DataFrame
         rates, to be filtered by year
@@ -156,6 +156,8 @@ def age_the_pop(df):
     df = df.reset_index(drop=False)
     df['age'] = df['age'] + 1
     df.loc[((df["type"] =='HP') & (df["mildep"] =='Y')) , 'age'] = df['age'] - 1
+    df.loc[(df['type'].isin(['COL','MIL'])),'age'] = df['age'] - 1
+
     df = df[df.age < 101]
     pop = df.set_index(['age','race_ethn','sex'])
     return pop

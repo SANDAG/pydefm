@@ -25,11 +25,10 @@ def apply_pivot(df):
     """
 
     df = df.reset_index(drop=False)
-    df = pd.pivot_table(df,
-                              values='rate',
-                              index=['age','race_ethn','sex','yr'],
-                              columns=['migration'])
-    df = df.reset_index(level=3,drop=False) # rm yr from index, keep as column
+    df = pd.pivot_table(df, values='rate',
+                        index=['age','race_ethn','sex','yr'],
+                        columns=['migration'])
+    df = df.reset_index()
     return df
 
 

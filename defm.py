@@ -1,11 +1,17 @@
+import inspect, os
 import pandas as pd
+import time
 from db import extract
+from db import log
 from forecast import compute
 from forecast import util
-import inspect, os
-from db import log
-import time
 
+"""
+Demographic and Economic Forecasting Model
+a simulation using rate versions in .yml input config file
+rate versions refer to original data source
+
+"""
 
 # Housekeeping stuff
 
@@ -19,27 +25,23 @@ os.chdir(os.path.dirname(full_path))
 # set console display to show MultiIndex for every row
 pd.set_option('display.multi_sparse', False)
 
-
-# Start model run using rate versions in model_config.yml
-#   note: rate versions refer to original data source
-
-# record rate versions in result database
-db_run_id = log.new_run('model_summary.db') # primary key for this run
+# rate versions to result database & returns primary key for table
+db_run_id = log.new_run('model_summary.db')
 
 
-# Load base population and rates.
+# Load rates for all years: SQL query to pandas DataFrame
+#   columns:  'age', 'race_ethn', 'sex' (cohort), 'rate', 'year'
+#   pivot migration DataFrame w 4 rates: domestic in & out, foreign in & out
 
-# SQL query to pandas DataFrame (returns rates for all years)
-#      columns:  'age', 'race_ethn', 'sex' (cohort), 'rate', 'year'
-mig_rates = extract.create_df('migration', 'rate_table')
-# migration rates: domestic in, domestic out, foreign in, foreign out
-mig_rates = util.apply_pivot(mig_rates)  # pivot df so 4 mig rates in cols
 birth_rates = extract.create_df('birth', 'rate_table')
 death_rates = extract.create_df('death', 'rate_table')
+mig_rates = extract.create_df('migration', 'rate_table', pivot=True)
 
-# pandas DataFrame from SQL query (base population)
-#      columns:  'age', 'race_ethn', 'sex' (cohort),
-#       'gq.type', 'mildep','persons', 'households'
+
+# Load base population: SQL query to pandas DataFrame
+#   columns:  'age', 'race_ethn', 'sex' (cohort),
+#   'gq.type', 'mildep', 'persons', 'households'
+
 population = extract.create_df('population', 'population_table')
 
 # base population to result database
@@ -48,7 +50,7 @@ log.insert_run('base_population.db', db_run_id, population,'base_population')
 # years to be used in model
 years = util.yaml_to_dict('model_config.yml', 'years')
 
-population_summary = []  # initialize population by year list
+population_summary = []  # initialize list for population by year
 
 # iterate over all years
 for index, yr in enumerate(range(years['y1'],years['yf'] + 1)):
