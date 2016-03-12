@@ -8,7 +8,7 @@ from forecast import util
 
 """
 Demographic and Economic Forecasting Model
-a simulation using rate versions in .yml input config file
+a simulation using rate versions in model_config.yml input config file
 rate versions refer to original data source
 
 """
@@ -25,7 +25,7 @@ os.chdir(os.path.dirname(full_path))
 # set console display to show MultiIndex for every row
 pd.set_option('display.multi_sparse', False)
 
-# rate versions to result database & returns primary key for table
+# rate versions to result database & return primary key for table
 db_run_id = log.new_run('model_summary.db')
 
 
@@ -58,41 +58,55 @@ for index, yr in enumerate(range(years['y1'],years['yf'] + 1)):
     print ('{} {}'.format(index, yr))
 
     # MIGRATION
-    # Apply rates for in-migration & out-migration to base population
 
-    # get rates for simulated yr in loop
-    # join DataFrame with population
+    # rates for simulated yr joined with population DataFrame
     yr_mig = compute.rates_for_yr(population, mig_rates, yr)
 
-    # in & out migrating population
-    net_mig_pop = compute.net_mig(yr_mig, db_run_id, yr)
+    # in & out migrating population calculated
+    mig = compute.net_mig(yr_mig, db_run_id, yr)
 
-    # non-migrating population
-    non_mig = compute.non_mig(net_mig_pop, db_run_id, yr)
+    # non-migrating population: population - out mig
+    non_mig = compute.non_mig(mig, db_run_id, yr)
 
     # BIRTH
-    # Apply rates for birth to base population
-    yr_birth = compute.rates_for_yr(non_mig, birth_rates, yr)  # simulated yr
-    births_per_cohort = compute.births_all(yr_birth, db_run_id, yr)  # newborn population
+
+    # rates for simulated yr joined with population DataFrame
+    yr_birth = compute.rates_for_yr(non_mig, birth_rates, yr)
+
+    births_per_cohort = compute.births_all(yr_birth, db_run_id, yr)
+
     # sum newborn population across cohorts
-    births = compute.births_sum(births_per_cohort, db_run_id, yr)
+    newborns = compute.births_sum(births_per_cohort, db_run_id, yr)
 
     # DEATH
-    # Apply rates for death to base population
-    yr_death = compute.rates_for_yr(non_mig,death_rates,yr)  # simulated yr
-    survived_pop = compute.deaths(yr_death, db_run_id, yr)  # deceased population
+
+    # rates for simulated yr joined with population DataFrame
+    yr_death = compute.rates_for_yr(non_mig, death_rates, yr)
+
+    survived_pop = compute.deaths(yr_death, db_run_id, yr)
+
     # age population by one year
     aged_pop = compute.age_the_pop(survived_pop)
+
     # PREDICTED POPULATION
+
     # Update base population by adding in-migrating population and newborns
-    population = compute.new_pop(births,aged_pop)
+    population = compute.new_pop(newborns, aged_pop)
+
+    # add column for simulated yr for result database
     pop_by_year = population.copy()
     pop_by_year['yr'] = yr
-    log.insert_run('population.db',db_run_id,pop_by_year,'population_' + str(yr))
-    population_summary.append({'Year': yr, 'Population': population['persons'].sum()})
+    log.insert_run('population.db', db_run_id, pop_by_year,
+                   'population_' + str(yr))
 
-# database logging of results
+    # create summary for result db
+    population_summary.append({'Year': yr,
+                               'Population': population['persons'].sum()})
+# end iteration over all years
+
+# database logging of results population by year
 summary_df = pd.DataFrame(population_summary)
-log.insert_run('model_summary.db',db_run_id,summary_df,'summary')
+log.insert_run('model_summary.db', db_run_id, summary_df, 'summary')
 
-print("--- %s seconds ---" % (time.time() - start_time)) # time to execute
+# script time to run
+print("--- %s seconds ---" % (time.time() - start_time))

@@ -27,7 +27,7 @@ def rates_for_yr(population, rates_all_years, sim_year):
         rates for a given year and population for each cohort
 
     """
-    rates_yr = rates_all_years[rates_all_years['yr']== sim_year]
+    rates_yr = rates_all_years[rates_all_years['yr'] == sim_year]
     pop_w_rates = population.join(rates_yr)
     return pop_w_rates
 
@@ -54,13 +54,15 @@ def net_mig(df, db_id, sim_year):
                 foreign in (FIN), and foreign out (FOUT)
 
     """
-    # for special cases, no migration thus set rates to zero
+    # SPECIAL CASE: no migration, set rates to zero
 
     # when group quarters = "HP" and mildep = "Y"
-    df.loc[((df.type == 'HP') & (df.mildep == 'Y')),['DIN','DOUT','FIN','FOUT']] = 0
+    df.loc[((df.type == 'HP') & (df.mildep == 'Y')),
+           ['DIN', 'DOUT', 'FIN', 'FOUT']] = 0
 
     # when group quarters equal COL, INS, MIL, or OTH
-    df.loc[df['type'].isin(['COL','INS','MIL','OTH']),['DIN','DOUT','FIN','FOUT']] = 0
+    df.loc[df['type'].isin(['COL', 'INS', 'MIL', 'OTH']),
+           ['DIN', 'DOUT', 'FIN', 'FOUT']] = 0
 
     # calculate net migration
     df['mig_Dout'] = (df['persons'] * df['DOUT']).round()
@@ -70,19 +72,16 @@ def net_mig(df, db_id, sim_year):
     df['mig_out_net'] = df['mig_Dout'] + df['mig_Fout']
     df['mig_in_net'] = df['mig_Din'] + df['mig_Fin']
 
-    # record net migration in result database
-    log.insert_run('net_migration.db',db_id,df,'migration_' + str(sim_year))
-
     return df
 
 
-def non_mig(df, db_id, sim_year):
+def non_mig(nm_df, db_id, sim_year):
     """
     Calculate non-migration population by subtracting net out migrating from population
 
     Parameters
     ----------
-    df : pandas.DataFrame
+    nm_df : pandas.DataFrame
         with population for current yr
         and population migrating in & out
     db_id : int
@@ -92,106 +91,75 @@ def non_mig(df, db_id, sim_year):
 
     Returns
     -------
-    df : pandas DataFrame
+    nm_df : pandas DataFrame
         non-migrating population per cohort for a given year
 
     """
-    df['non_mig_pop'] = df['persons'] - df['mig_out_net']
+    nm_df['non_mig_pop'] = nm_df['persons'] - nm_df['mig_out_net']
 
-    log.insert_run('non_migrating_pop.db',db_id,df,'non_migrating_' + str(sim_year))
-    # drop year column in order to join with birth and death rates
-    # which have a year column
-    # df = df.drop(['yr'], 1)
-    df = df[['type','mildep','non_mig_pop','households','mig_in_net']]
-    return df
+    # record non migration population in result database
+    log.insert_run('non_migrating.db', db_id, nm_df,
+                   'non_migrating_' + str(sim_year))
+
+    # drop year column in order to join w birth and death rates
+    # drop other unnecessary columns
+    nm_df = nm_df[['type', 'mildep', 'non_mig_pop', 'households', 'mig_in_net']]
+    return nm_df
 
 
-def deaths(df, db_id, sim_year):
+def births_all(b_df, db_id, sim_year):
     """
-     Calculate deaths by applying death rates to non-migrating population for given year
+    Calculate births for given year based on rates.
+    Predict male births as 51% of all births & female births as 49%.
+    Result is nearest integer (floor) after +0 or +0.5 (randomly generated)
 
     Parameters
     ----------
-    pandas DataFrame : With population and death rates for current yr
+    b_df : pandas.DataFrame
+        with population for current yr and birth rates
+    db_id : int
+        primary key for current simulation
+    sim_year : int
+        year being simulated
 
     Returns
     -------
-    pandas DataFrame : Survived population per cohort for a given year
+    b_df : pandas DataFrame
+        male and female births by cohort (race_ethn and age)
 
     """
-    df['deaths'] = (df['non_mig_pop'] * df['death_rate']).round()
-    log.insert_run('deaths.db',db_id,df,'survived_' + str(sim_year))
+    # SPECIAL CASE: no births, set rates to zero
 
-    # special case for military: deaths not carried over into next year
-    # otherwise: subtract deaths from non-migrating population
-    df['survived'] = np.where(
-        ((df['type'] == 'HP') & (df['mildep'] == 'Y')),  # special case
-                                 df['non_mig_pop'],  # no deaths
-                                  df['non_mig_pop'] - df['deaths'])  # else
-
-    # special case for group quarters:
-    # deaths not carried over into next year
-    df['survived'] = np.where(
-        df['type'].isin(['COL','INS','MIL','OTH']),  # special case
-                                 df['non_mig_pop'],  # no deaths carried over
-                                  df['survived'])
-
-    df = df.drop(['deaths','yr','death_rate','non_mig_pop'], 1)
-    return df
-
-
-def age_the_pop(df):
-    """
-    Age population by one year.  Get rid of population greater than 100
-
-    Parameters
-    ----------
-    pandas DataFrame : With survived population
-
-    Returns
-    -------
-    pandas DataFrame : population aged by one year
-
-    """
-    df = df.reset_index(drop=False)
-    df['age'] = df['age'] + 1
-    df.loc[((df["type"] =='HP') & (df["mildep"] =='Y')) , 'age'] = df['age'] - 1
-    df.loc[(df['type'].isin(['COL','MIL'])),'age'] = df['age'] - 1
-
-    df = df[df.age < 101]
-    pop = df.set_index(['age','race_ethn','sex'])
-    return pop
-
-
-def births_all(df, db_id, sim_year):
-    """
-    Calculate births for given year
-    Predict male or female birth by random number
-    Add random number (0 or 0.5) before rounding (converting to int which truncates float)
-    Parameters
-    ----------
-    pandas DataFrame : population and birth rates
-
-    Returns
-    -------
-    pandas DataFrame : male and female births by cohort (race_ethn and age)
-
-    """
-    # set birth rate to zero for special case
     # when group quarters in ("COL","INS","MIL","OTH")
-    df.loc[df['type'].isin(['COL','INS','MIL','OTH']),['birth_rate']] = 0
+    b_df.loc[b_df['type'].isin(['COL','INS','MIL','OTH']), ['birth_rate']] = 0
 
-    df['births_rounded'] = np.round(df['non_mig_pop'] * df['birth_rate']).fillna(0.0).astype(int)
-    df['births_m_float'] = df['births_rounded'] * 0.51  # float, 51% male
+    # total births =  population * birth rate (fill blanks w zero)
+    b_df['births_rounded'] = np.round(
+        b_df['non_mig_pop'] * b_df['birth_rate']).fillna(0.0).astype(int)
+
+    # male births 51%
+    b_df['births_m_float'] = b_df['births_rounded'] * 0.51
+
+    # 0 or 0.5 generated randomly by multiplying 0 or 1 by 0.5
     np.random.seed(2010)
-    df['randomNumCol'] = 0.5 * np.random.randint(2,size = df.shape[0])  # 0 or 0.5
-    df['births_m'] = (df['births_m_float'] + df['randomNumCol']).astype(int)
-    df['births_f'] = df['births_rounded'] - df['births_m']
-    df2 = df.copy()
-    df2 =df2[df2.yr.notnull()] # remove rows with no birth rate
-    df2 = df2.drop('mig_in_net', 1)
-    log.insert_run('births_all.db',db_id,df2,'births_all_' + str(sim_year))
-    return df
+    b_df['randomNumCol'] = 0.5 * np.random.randint(2, size=b_df.shape[0])
+
+    # Add random 0 or 0.5
+    # Convert to int which truncates float (floor)
+    b_df['births_m'] = b_df['births_m_float'] + b_df['randomNumCol']
+    b_df['births_m'] = b_df['births_m'].astype(int)
+
+    # female births
+    b_df['births_f'] = b_df['births_rounded'] - b_df['births_m']
+
+    # remove rows w no birth rate
+    # use yr column since yr column in original birth rates DataFrame
+    b_df_notnull = b_df[b_df.yr.notnull()].copy()
+
+    log.insert_run('births.db', db_id, b_df_notnull,
+                   'births_' + str(sim_year))
+
+    return b_df_notnull
 
 
 def births_sum(df,db_id,sim_year):
@@ -201,31 +169,117 @@ def births_sum(df,db_id,sim_year):
 
     Parameters
     ----------
-    pandas DataFrame : male and female births for each cohort and non-migrating population
+    df : pandas DataFrame
+        male and female births for each cohort and non-migrating population
+    db_id : int
+        primary key for current simulation
+    sim_year : int
+        year being simulated
 
     Returns
     -------
-    pandas DataFrame : births summed across age for each cohort
+    births_age0 : pandas DataFrame
+        births summed across age for each cohort
 
     """
     df = df.reset_index(drop=False)
-    male_births = pd.DataFrame({'persons' : df['births_m'].groupby([df['yr'],df['race_ethn'],df['type'],df['mildep']]).sum()}).reset_index()
+    male_births = pd.DataFrame({'persons' : df['births_m'].
+                               groupby([df['yr'],df['race_ethn'],df['type'],
+                                        df['mildep']]).sum()}).reset_index()
     male_births['sex'] = 'M'
     male_births['age'] = 0
     male_births = male_births.set_index(['age','race_ethn','sex'])
-    female_births = pd.DataFrame({'persons' : df['births_f'].groupby([df['yr'],df['race_ethn'],df['type'],df['mildep']]).sum()}).reset_index()
+    female_births = pd.DataFrame({'persons' : df['births_f'].
+                                 groupby([df['yr'],df['race_ethn'],df['type'],
+                                          df['mildep']]).sum()}).reset_index()
     female_births['sex'] = 'F'
     female_births['age'] = 0
     female_births = female_births.set_index(['age','race_ethn','sex'])
-    births_age0 = pd.concat([male_births, female_births], axis=0)
-    births_age0['households'] = 0  # need to fix this.  temp IGNORE
-    log.insert_run('births_sum.db',db_id,births_age0,'births_sum_' + str(sim_year))
-    births_age0 = births_age0.drop('yr', 1)
+    births_mf = pd.concat([male_births, female_births], axis=0)
+    births_mf['households'] = 0  # need to fix this.  temp IGNORE
+    log.insert_run('newborns.db', db_id, births_mf, 'newborns_' +
+                   str(sim_year))
+
+    births_mf = births_mf.drop('yr', 1)
+
+    # SPECIAL CASE: when births are not carried over
     # keep rows in which either type != 'HP' OR mildep != 'Y'
     # which results in dropping rows  where type = 'HP' AND mildep = 'Y'
-    births_age0 = births_age0[((births_age0.type != 'HP') | (births_age0.mildep != 'Y'))]
+    births_mf = births_mf[((births_mf.type != 'HP') | (births_mf.mildep != 'Y'))]
 
-    return births_age0
+    return births_mf
+
+
+def deaths(df, db_id, sim_year):
+    """
+     Calculate deaths by applying death rates to non-migrating population
+
+    Parameters
+    ----------
+    df : pandas DataFrame
+        population and death rates for current yr
+    db_id : int
+        primary key for current simulation
+    sim_year : int
+        year being simulated
+
+    Returns
+    -------
+    df : pandas DataFrame
+        survived population per cohort for a given year
+
+    """
+    df['deaths'] = (df['non_mig_pop'] * df['death_rate']).round()
+    # report out deaths
+    log.insert_run('deaths.db', db_id, df, 'survived_' + str(sim_year))
+
+    # SPECIAL CASES
+    # deaths not carried over into next year
+    df['survived'] = np.where(
+        ((df['type'] == 'HP') & (df['mildep'] == 'Y')) |
+        df['type'].isin(['COL','INS','MIL','OTH']),
+        df['non_mig_pop'],  # special case
+        df['non_mig_pop'] - df['deaths'])  # else
+
+    # drop other unnecessary columns
+    df = df.drop(['deaths', 'yr', 'death_rate', 'non_mig_pop'], 1)
+    return df
+
+
+def age_the_pop(df):
+    """
+    Age population by one year.  Get rid of population greater than 100
+
+    Parameters
+    ----------
+    df : pandas DataFrame
+        survived population
+
+    Returns
+    -------
+    pop : pandas DataFrame
+        population aged by one year
+
+    """
+    df = df.reset_index(drop=False)
+
+    # age the population
+    df['aged'] = df['age'] + 1
+
+    # SPECIAL CASES
+    # next year's population is carried over from the base unchanged
+    df.loc[((df["type"] == 'HP') & (df["mildep"] == 'Y')), 'aged'] = df['age']
+    df.loc[(df['type'].isin(['COL', 'MIL'])), 'aged'] = df['age']
+
+    # fix later
+    df = df[df.aged < 101]  # need to fix w death rate = 1 when age > 100
+
+    df = df.drop(['age'], 1)
+    df.rename(columns={'aged': 'age'}, inplace=True)
+    pop = df.set_index(['age', 'race_ethn', 'sex'])
+    return pop
+
+
 
 
 def new_pop(newborn,aged):

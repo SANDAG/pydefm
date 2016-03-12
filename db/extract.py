@@ -7,7 +7,7 @@ from forecast import util
 
 def create_df(data_type,db_table,pivot=False):
     """
-    Create pandas DataFrame from database query to select base population
+    Create pandas DataFrame from database SQL query to select base population
     or rate versions to be used in model.
 
     Args:
@@ -30,7 +30,8 @@ def create_df(data_type,db_table,pivot=False):
     rate_versions = util.yaml_to_dict('model_config.yml', 'rate_versions')
     tables = util.yaml_to_dict('model_config.yml', 'db_tables')
 
-    # build query
+    # build query from sql.py
+    # use database table name and rate versions from .yml file
     in_query = getattr(sql,data_type) % (tables[db_table],rate_versions[data_type])
 
     # pandas DataFrame from query
@@ -41,7 +42,7 @@ def create_df(data_type,db_table,pivot=False):
     if pivot:
         df_sql_result = util.apply_pivot(df_sql_result)
 
-    # MultiIndex on cohort attributes
+    # create MultiIndex on cohort attributes
     df_sql_result = df_sql_result.set_index(['age','race_ethn','sex'])
 
     return df_sql_result
