@@ -183,20 +183,30 @@ def births_sum(df,db_id,sim_year):
 
     """
     df = df.reset_index(drop=False)
-    male_births = pd.DataFrame({'persons' : df['births_m'].
-                               groupby([df['yr'],df['race_ethn'],df['type'],
-                                        df['mildep']]).sum()}).reset_index()
+
+    df = df[['yr', 'race_ethn', 'mildep','type','births_m','births_f']]
+
+    births_grouped = df.groupby(['yr', 'race_ethn', 'mildep',
+                              'type'], as_index=False).sum()
+
+    male_births = births_grouped.copy()
+    male_births.rename(columns={'births_m': 'persons'}, inplace=True)
     male_births['sex'] = 'M'
     male_births['age'] = 0
     male_births = male_births.set_index(['age','race_ethn','sex'])
-    female_births = pd.DataFrame({'persons' : df['births_f'].
-                                 groupby([df['yr'],df['race_ethn'],df['type'],
-                                          df['mildep']]).sum()}).reset_index()
+    male_births = male_births.drop('births_f',1)
+
+    female_births = births_grouped.copy()
+    female_births.rename(columns={'births_f': 'persons'}, inplace=True)
     female_births['sex'] = 'F'
     female_births['age'] = 0
     female_births = female_births.set_index(['age','race_ethn','sex'])
+    female_births = female_births.drop('births_m',1)
+
     births_mf = pd.concat([male_births, female_births], axis=0)
-    births_mf['households'] = 0  # need to fix this.  temp IGNORE
+
+    births_mf['households'] = 0  # temp ignore households
+
     log.insert_run('newborns.db', db_id, births_mf, 'newborns_' +
                    str(sim_year))
 
@@ -206,7 +216,8 @@ def births_sum(df,db_id,sim_year):
     # keep rows in which either type != 'HP' OR mildep != 'Y'
     # which results in dropping rows  where type = 'HP' AND mildep = 'Y'
     births_mf = births_mf[((births_mf.type != 'HP') | (births_mf.mildep != 'Y'))]
-
+    # no births for this special case
+    births_mf = births_mf[-births_mf['type'].isin(['COL','MIL','INS','OTH'])]
     return births_mf
 
 
@@ -270,6 +281,7 @@ def age_the_pop(df):
     # next year's population is carried over from the base unchanged
     df.loc[((df["type"] == 'HP') & (df["mildep"] == 'Y')), 'aged'] = df['age']
     df.loc[(df['type'].isin(['COL', 'MIL'])), 'aged'] = df['age']
+    df = df[-df['type'].isin(['INS','OTH'])]
 
     # fix later
     df = df[df.aged < 101]  # need to fix w death rate = 1 when age > 100
@@ -280,25 +292,23 @@ def age_the_pop(df):
     return pop
 
 
-
-
 def new_pop(newborn,aged):
     """
     Update base population by adding in-migrating population and newborns
 
-
     Parameters
     ----------
-    pandas DataFrame : newborns for simulated year
-    pandas DataFrame : aged population for simulated year
-
+    newborn : pandas DataFrame
+        newborns for simulated year
+    aged : pandas DataFrame
+        aged population for simulated year
 
     Returns
     -------
-    pandas DataFrame :  Newborn Population + Survived Population
+    pop : pandas DataFrame
+        Newborn Population + Survived Population
 
     """
-    #aged['persons'] = aged['survived'] + aged['mig_in_net']
     aged['persons'] = np.where(
         ((aged['type'] == 'HP') & (aged['mildep'] == 'Y')), # special case
                                  aged['survived'],  # no in migration
@@ -306,3 +316,37 @@ def new_pop(newborn,aged):
     aged = aged.drop(['survived','mig_in_net'], 1)
     pop = pd.concat([newborn,aged])
     return pop
+
+
+def case_ins_oth(pop, ratios, gq_type):
+    """
+    Apply ratios to determine INS and OTH population (special cases)
+
+    Parameters
+    ----------
+    pop : pandas DataFrame
+        population
+    ratios : pandas DataFrame
+        cohort-specific ratio: "INS pop / HP pop" or "OTH pop / HP pop"
+    gq_type : string
+        INS or OTH
+    Returns
+    -------
+    special_pop : pandas DataFrame
+        Population + Special Case Population
+
+    """
+
+    ratios_hp = (ratios[ratios['type'] == 'HP']).copy()
+    ratios_hp['pop_special_case'] = (ratios_hp['case_ratio'] * ratios_hp['persons']).round()
+    ratios_hp['type'] = gq_type
+    ratios_hp = ratios_hp.drop(['persons','case_ratio','yr'], 1)
+    ratios_hp.rename(columns={'pop_special_case': 'persons'}, inplace=True)
+    ratios_hp = ratios_hp.reset_index(drop=False)
+    sum_mildep_yn = ratios_hp.groupby(['age', 'race_ethn', 'sex', 'type',
+                                       'run_id'], as_index=False).sum()
+    sum_mildep_yn = sum_mildep_yn.set_index(['age','race_ethn','sex'])
+    sum_mildep_yn['mildep'] = 'N'
+    special_pop = pd.concat([pop, sum_mildep_yn])
+
+    return special_pop

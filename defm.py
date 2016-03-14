@@ -44,6 +44,12 @@ mig_rates = extract.create_df('migration', 'rate_table', pivot=True)
 
 population = extract.create_df('population', 'population_table')
 
+# special case ratios
+ins_ratio = extract.create_df('ins', 'rate_table')
+
+oth_ratio = extract.create_df('oth', 'rate_table')
+
+
 # base population to result database
 log.insert_run('base_population.db', db_run_id, population,'base_population')
 
@@ -78,7 +84,7 @@ for index, yr in enumerate(range(years['y1'],years['yf'] + 1)):
     # sum newborn population across cohorts
     newborns = compute.births_sum(births_per_cohort, db_run_id, yr)
 
-    # DEATH
+    # DEATHS
 
     # rates for simulated yr joined with population DataFrame
     yr_death = compute.rates_for_yr(non_mig, death_rates, yr)
@@ -90,8 +96,22 @@ for index, yr in enumerate(range(years['y1'],years['yf'] + 1)):
 
     # PREDICTED POPULATION
 
-    # Update base population by adding in-migrating population and newborns
-    population = compute.new_pop(newborns, aged_pop)
+    # Update population by adding in-migrating population and newborns
+    pop = compute.new_pop(newborns, aged_pop)
+
+    # Special cases base_population.gq_type in ("INS","OTH")
+
+    # INS
+    # apply cohort-specific ratio (INS pop / HP pop)
+    yr_ins = compute.rates_for_yr(pop, ins_ratio, yr)  # ratios
+    # Update population for special case for INS
+    pop_ins = compute.case_ins_oth(pop, yr_ins, 'INS')
+
+    # OTH
+    # apply cohort-specific ratio (OTH pop / HP pop)
+    yr_oth = compute.rates_for_yr(pop_ins, oth_ratio, yr)  # ratios
+    # Update population for special case for OTH
+    population = compute.case_ins_oth(pop_ins, yr_ins, 'OTH')
 
     # add column for simulated yr for result database
     pop_by_year = population.copy()

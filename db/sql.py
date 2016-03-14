@@ -55,3 +55,28 @@ FROM    %s
 WHERE   rate_type = 'D' AND
         rate_version = %s
 """
+
+# SPECIAL CASE: INS
+ins = """
+SELECT  yr,
+        age,
+        race_ethn,
+        sex,
+        rate as case_ratio
+FROM    %s
+WHERE   rate_type = 'INS' AND
+        rate_version = %s
+"""
+
+
+# SPECIAL CASE: OTH
+oth = """
+SELECT  yr,
+        age,
+        race_ethn,
+        sex,
+        rate as case_ratio
+FROM    %s
+WHERE   rate_type = 'OTH' AND
+        rate_version = %s
+"""
