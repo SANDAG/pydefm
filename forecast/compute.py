@@ -134,8 +134,13 @@ def births_all(b_df, db_id, sim_year):
     b_df.loc[b_df['type'].isin(['COL','INS','MIL','OTH']), ['birth_rate']] = 0
 
     # total births =  population * birth rate (fill blanks w zero)
-    b_df['births_rounded'] = np.round(
-        b_df['non_mig_pop'] * b_df['birth_rate']).fillna(0.0).astype(int)
+    b_df['births_rounded'] = (b_df['non_mig_pop'] *
+                              b_df['birth_rate']).fillna(0.0)
+    b_df = b_df.round({'births_rounded': 0})
+
+    # note: no longer works after pandas 0.18.0 - use above code
+    # b_df['births_rounded'] = np.round(
+    #    b_df['non_mig_pop'] * b_df['birth_rate']).fillna(0.0).astype(int)
 
     # male births 51%
     b_df['births_m_float'] = b_df['births_rounded'] * 0.51
