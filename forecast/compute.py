@@ -98,8 +98,12 @@ def non_mig(nm_df, db_id, sim_year):
     nm_df['non_mig_pop'] = nm_df['persons'] - nm_df['mig_out_net']
 
     # record non migration population in result database
-    log.insert_run('non_migrating.db', db_id, nm_df,
-                   'non_migrating_' + str(sim_year))
+#    log.insert_run('non_migrating.db', db_id, nm_df,
+#                   'non_migrating_' + str(sim_year))
+
+        # record non migration population in result database
+    log.insert_run('defm.db', db_id, nm_df,
+                   'non_migrating')
 
     # drop year column in order to join w birth and death rates
     # drop other unnecessary columns
@@ -161,8 +165,12 @@ def births_all(b_df, db_id, sim_year):
     # use yr column since yr column in original birth rates DataFrame
     b_df_notnull = b_df[b_df.yr.notnull()].copy()
 
-    log.insert_run('births.db', db_id, b_df_notnull,
-                   'births_' + str(sim_year))
+    #log.insert_run('births.db', db_id, b_df_notnull,
+    #               'births_' + str(sim_year))
+
+    log.insert_run('defm.db', db_id, b_df_notnull,
+                   'births')
+
 
     return b_df_notnull
 
@@ -212,8 +220,11 @@ def births_sum(df,db_id,sim_year):
 
     births_mf['households'] = 0  # temp ignore households
 
-    log.insert_run('newborns.db', db_id, births_mf, 'newborns_' +
-                   str(sim_year))
+#    log.insert_run('newborns.db', db_id, births_mf, 'newborns_' +
+#                   str(sim_year))
+
+    log.insert_run('defm.db', db_id, births_mf, 'newborns')
+
 
     births_mf = births_mf.drop('yr', 1)
 
@@ -247,7 +258,9 @@ def deaths(df, db_id, sim_year):
     """
     df['deaths'] = (df['non_mig_pop'] * df['death_rate']).round()
     # report out deaths
-    log.insert_run('deaths.db', db_id, df, 'survived_' + str(sim_year))
+    # log.insert_run('deaths.db', db_id, df, 'survived_' + str(sim_year))
+    log.insert_run('defm.db', db_id, df, 'deaths')
+
 
     # SPECIAL CASES
     # deaths not carried over into next year

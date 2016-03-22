@@ -26,7 +26,9 @@ os.chdir(os.path.dirname(full_path))
 pd.set_option('display.multi_sparse', False)
 
 # rate versions to result database & return primary key for table
-db_run_id = log.new_run('model_summary.db')
+# db_run_id = log.new_run('model_summary.db')
+db_run_id = log.new_run('defm.db')
+
 
 
 # Load rates for all years: SQL query to pandas DataFrame
@@ -51,7 +53,9 @@ oth_ratio = extract.create_df('oth', 'rate_table')
 
 
 # base population to result database
-log.insert_run('base_population.db', db_run_id, population,'base_population')
+# log.insert_run('base_defm.db', db_run_id, population,'base_population'
+log.insert_run('defm.db', db_run_id, population,'base_population')
+
 
 # years to be used in model
 years = util.yaml_to_dict('model_config.yml', 'years')
@@ -116,9 +120,10 @@ for index, yr in enumerate(range(years['y1'],years['yf'] + 1)):
     # add column for simulated yr for result database
     pop_by_year = population.copy()
     pop_by_year['yr'] = yr
-    log.insert_run('population.db', db_run_id, pop_by_year,
-                   'population_' + str(yr))
-
+#    log.insert_run('population.db', db_run_id, pop_by_year,
+#                   'population_' + str(yr))
+    log.insert_run('defm.db', db_run_id, pop_by_year,
+                   'population')
     # create summary for result db
     population_summary.append({'Year': yr,
                                'Population': population['persons'].sum()})
@@ -126,7 +131,7 @@ for index, yr in enumerate(range(years['y1'],years['yf'] + 1)):
 
 # database logging of results population by year
 summary_df = pd.DataFrame(population_summary)
-log.insert_run('model_summary.db', db_run_id, summary_df, 'summary')
+log.insert_run('defm.db', db_run_id, summary_df, 'summary')
 
 # script time to run
 print("--- %s seconds ---" % (time.time() - start_time))

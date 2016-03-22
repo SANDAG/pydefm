@@ -3,7 +3,7 @@ from forecast import util
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
-
+import os
 
 def new_run(db_name):
     Base = declarative_base()
@@ -18,7 +18,12 @@ def new_run(db_name):
         migration_rate_version = Column(Integer)
         householder_rate_version = Column(Integer)
 
-    engine = create_engine('sqlite:///' + 'results/' + db_name)
+    db_dir = 'results/'
+    if not os.path.exists(db_dir):
+
+        os.makedirs(db_dir)
+
+    engine = create_engine('sqlite:///' + db_dir + db_name)
 
     if not engine.has_table(table_name):
         Base.metadata.create_all(engine)
