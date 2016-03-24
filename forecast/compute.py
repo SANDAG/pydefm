@@ -98,12 +98,9 @@ def non_mig(nm_df, db_id, sim_year):
     nm_df['non_mig_pop'] = nm_df['persons'] - nm_df['mig_out_net']
 
     # record non migration population in result database
-#    log.insert_run('non_migrating.db', db_id, nm_df,
-#                   'non_migrating_' + str(sim_year))
-
-        # record non migration population in result database
-    log.insert_run('defm.db', db_id, nm_df,
-                   'non_migrating')
+    # remove rows that have zero population
+    nm_db = nm_df[nm_df.non_mig_pop != 0].copy()
+    log.insert_run('defm.db', db_id, nm_db, 'non_migrating')
 
     # drop year column in order to join w birth and death rates
     # drop other unnecessary columns
@@ -167,10 +164,9 @@ def births_all(b_df, db_id, sim_year):
 
     #log.insert_run('births.db', db_id, b_df_notnull,
     #               'births_' + str(sim_year))
-
-    log.insert_run('defm.db', db_id, b_df_notnull,
-                   'births')
-
+    # Remove zero rows
+    births_db = b_df_notnull[(b_df_notnull.births_m != 0) | (b_df_notnull.births_m != 0)].copy()
+    log.insert_run('defm.db', db_id, births_db, 'births')
 
     return b_df_notnull
 
@@ -222,9 +218,8 @@ def births_sum(df,db_id,sim_year):
 
 #    log.insert_run('newborns.db', db_id, births_mf, 'newborns_' +
 #                   str(sim_year))
-
-    log.insert_run('defm.db', db_id, births_mf, 'newborns')
-
+    newborns = births_mf[births_mf.persons != 0].copy()
+    log.insert_run('defm.db', db_id, newborns, 'newborns')
 
     births_mf = births_mf.drop('yr', 1)
 
@@ -257,10 +252,12 @@ def deaths(df, db_id, sim_year):
 
     """
     df['deaths'] = (df['non_mig_pop'] * df['death_rate']).round()
+    # deaths_out = df[df.deaths != 0]
     # report out deaths
     # log.insert_run('deaths.db', db_id, df, 'survived_' + str(sim_year))
-    log.insert_run('defm.db', db_id, df, 'deaths')
-
+    deaths_out = df[df.deaths != 0].copy()
+    log.insert_run('defm.db', db_id, deaths_out, 'deaths')
+    # log.insert_run('defm.db', db_id, df, 'deaths')
 
     # SPECIAL CASES
     # deaths not carried over into next year
@@ -271,6 +268,7 @@ def deaths(df, db_id, sim_year):
         df['non_mig_pop'] - df['deaths'])  # else
 
     # drop other unnecessary columns
+
     df = df.drop(['deaths', 'yr', 'death_rate', 'non_mig_pop'], 1)
     return df
 
@@ -361,8 +359,10 @@ def case_ins_oth(pop, ratios, gq_type):
     ratios_hp = ratios_hp.drop(['persons','case_ratio','yr'], 1)
     ratios_hp.rename(columns={'pop_special_case': 'persons'}, inplace=True)
     ratios_hp = ratios_hp.reset_index(drop=False)
-    sum_mildep_yn = ratios_hp.groupby(['age', 'race_ethn', 'sex', 'type',
-                                       'run_id'], as_index=False).sum()
+    # sum_mildep_yn = ratios_hp.groupby(['age', 'race_ethn', 'sex', 'type',
+    #                                      'run_id'], as_index=False).sum()
+    sum_mildep_yn = ratios_hp.groupby(['age', 'race_ethn', 'sex', 'type',],
+                                      as_index=False).sum()
     sum_mildep_yn = sum_mildep_yn.set_index(['age','race_ethn','sex'])
     sum_mildep_yn['mildep'] = 'N'
     special_pop = pd.concat([pop, sum_mildep_yn])

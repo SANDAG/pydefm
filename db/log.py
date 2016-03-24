@@ -55,3 +55,4 @@ def insert_run(db_name,model_run_id,df_results,table_name):
     # Insert prediction in the population table
     df_results['run_id'] = model_run_id # foreign key to run log table
     df_results.to_sql(name=table_name, con=engine, if_exists = 'append', index=True)
+    df_results = df_results.drop('run_id', 1) # remove run_id
