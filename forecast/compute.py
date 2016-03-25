@@ -72,6 +72,9 @@ def net_mig(df, db_id, sim_year):
     df['mig_out_net'] = df['mig_Dout'] + df['mig_Fout']
     df['mig_in_net'] = df['mig_Din'] + df['mig_Fin']
 
+    net_mig_db = df[(df.DIN != 0) | (df.DOUT != 0) | (df.FIN != 0) | (df.FOUT != 0)].copy()
+    log.insert_run('defm.db', db_id, net_mig_db, 'net_migration')
+
     return df
 
 
@@ -96,15 +99,20 @@ def non_mig(nm_df, db_id, sim_year):
 
     """
     nm_df['non_mig_pop'] = nm_df['persons'] - nm_df['mig_out_net']
+    # drop  unnecessary columns
+    nm_df = nm_df[['type', 'mildep','households','persons','mig_out_net','non_mig_pop','mig_in_net','yr']]
 
     # record non migration population in result database
     # remove rows that have zero population
     nm_db = nm_df[nm_df.non_mig_pop != 0].copy()
+    nm_db = nm_db.drop(['mig_in_net'],1)
+
     log.insert_run('defm.db', db_id, nm_db, 'non_migrating')
 
     # drop year column in order to join w birth and death rates
-    # drop other unnecessary columns
-    nm_df = nm_df[['type', 'mildep', 'non_mig_pop', 'households', 'mig_in_net']]
+    nm_df = nm_df.drop(['yr','persons','mig_out_net'],1)
+
+
     return nm_df
 
 
@@ -166,7 +174,18 @@ def births_all(b_df, db_id, sim_year):
     #               'births_' + str(sim_year))
     # Remove zero rows
     births_db = b_df_notnull[(b_df_notnull.births_m != 0) | (b_df_notnull.births_m != 0)].copy()
-    log.insert_run('defm.db', db_id, births_db, 'births')
+    births_db = births_db.reset_index(drop=False)
+    births_db = births_db.drop('mig_in_net',1)
+    births_db = births_db.drop('sex',1)
+    births_db.rename(columns={'births_m': 'male births'}, inplace=True)
+    births_db.rename(columns={'births_f': 'female births'}, inplace=True)
+    births_db.rename(columns={'randomNumCol': 'add (random) then floor'}, inplace=True)
+    births_db.rename(columns={'age': 'mother age'}, inplace=True)
+    births_db.rename(columns={'race_ethn': 'mother race_ethn'}, inplace=True)
+    births_db.rename(columns={'births_rounded': 'total births'}, inplace=True)
+    births_db.rename(columns={'births_m_float': 'male births (float)'}, inplace=True)
+
+    log.insert_run('defm.db', db_id, births_db, 'mothers_n_births')
 
     return b_df_notnull
 
@@ -216,19 +235,26 @@ def births_sum(df,db_id,sim_year):
 
     births_mf['households'] = 0  # temp ignore households
 
+    # no births for this special case
+    births_mf = births_mf[-births_mf['type'].isin(['COL','MIL','INS','OTH'])]
+
+    newborns = births_mf[births_mf.persons != 0].copy()
+    newborns.rename(columns={'persons': 'newborns'}, inplace=True)
+    newborns = newborns.drop('households', 1)
+
+    log.insert_run('defm.db', db_id, newborns, 'newborns')
 #    log.insert_run('newborns.db', db_id, births_mf, 'newborns_' +
 #                   str(sim_year))
-    newborns = births_mf[births_mf.persons != 0].copy()
-    log.insert_run('defm.db', db_id, newborns, 'newborns')
-
     births_mf = births_mf.drop('yr', 1)
 
-    # SPECIAL CASE: when births are not carried over
+    # SPECIAL CASE:
+    # Births are estimated & reported out, but are not carried over into the
+    # next year ( base_population.type="HP" and base_population.mildep="Y")
     # keep rows in which either type != 'HP' OR mildep != 'Y'
     # which results in dropping rows  where type = 'HP' AND mildep = 'Y'
     births_mf = births_mf[((births_mf.type != 'HP') | (births_mf.mildep != 'Y'))]
-    # no births for this special case
-    births_mf = births_mf[-births_mf['type'].isin(['COL','MIL','INS','OTH'])]
+
+
     return births_mf
 
 
@@ -256,7 +282,19 @@ def deaths(df, db_id, sim_year):
     # report out deaths
     # log.insert_run('deaths.db', db_id, df, 'survived_' + str(sim_year))
     deaths_out = df[df.deaths != 0].copy()
-    log.insert_run('defm.db', db_id, deaths_out, 'deaths')
+    deaths_out = deaths_out.drop(['mig_in_net'], 1)
+
+    log.insert_run('defm.db', db_id, deaths_out, 'deaths_by_cohort_by_age')
+
+    deaths_out = deaths_out.reset_index(drop=False)
+
+    deaths_out = deaths_out.drop(['non_mig_pop', 'death_rate', 'age','households'], 1)
+
+    deaths_grouped = deaths_out.groupby(['yr', 'race_ethn', 'mildep', 'sex',
+                              'type'], as_index=False).sum()
+
+    log.insert_run('defm.db', db_id, deaths_grouped, 'deaths_sum_by_age')
+
     # log.insert_run('defm.db', db_id, df, 'deaths')
 
     # SPECIAL CASES
@@ -268,6 +306,9 @@ def deaths(df, db_id, sim_year):
         df['non_mig_pop'] - df['deaths'])  # else
 
     # drop other unnecessary columns
+    survived_out = df[df.non_mig_pop != 0].copy()
+    survived_out = survived_out.drop(['mig_in_net'], 1)
+    log.insert_run('defm.db', db_id, survived_out, 'survived')
 
     df = df.drop(['deaths', 'yr', 'death_rate', 'non_mig_pop'], 1)
     return df
