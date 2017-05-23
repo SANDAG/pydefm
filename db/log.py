@@ -3,6 +3,8 @@ from forecast import util
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
+from pysandag.database import get_connection_string
+
 import os
 
 def new_run(db_name):
@@ -23,7 +25,7 @@ def new_run(db_name):
 
         os.makedirs(db_dir)
 
-    engine = create_engine('sqlite:///' + db_dir + db_name)
+    engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
 
     if not engine.has_table(table_name):
         Base.metadata.create_all(engine)
@@ -50,9 +52,9 @@ def new_run(db_name):
 
 def insert_run(db_name,model_run_id,df_results,table_name):
 
-    engine = create_engine('sqlite:///'+ 'results/' + db_name)
+    engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
 
     # Insert prediction in the population table
     df_results['run_id'] = model_run_id # foreign key to run log table
-    df_results.to_sql(name=table_name, con=engine, if_exists = 'append', index=True)
+    df_results.to_sql(name=table_name, con=engine, schema='defm', if_exists = 'append', index=True)
     df_results = df_results.drop('run_id', 1) # remove run_id

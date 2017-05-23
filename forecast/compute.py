@@ -179,11 +179,11 @@ def births_all(b_df, db_id, sim_year):
     births_db = births_db.drop('sex',1)
     births_db.rename(columns={'births_m': 'male births'}, inplace=True)
     births_db.rename(columns={'births_f': 'female births'}, inplace=True)
-    births_db.rename(columns={'randomNumCol': 'add (random) then floor'}, inplace=True)
+    births_db.rename(columns={'randomNumCol': 'add random then floor'}, inplace=True)
     births_db.rename(columns={'age': 'mother age'}, inplace=True)
     births_db.rename(columns={'race_ethn': 'mother race_ethn'}, inplace=True)
     births_db.rename(columns={'births_rounded': 'total births'}, inplace=True)
-    births_db.rename(columns={'births_m_float': 'male births (float)'}, inplace=True)
+    births_db.rename(columns={'births_m_float': 'male births float'}, inplace=True)
 
     log.insert_run('defm.db', db_id, births_db, 'mothers_n_births')
 
