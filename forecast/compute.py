@@ -143,7 +143,7 @@ def births_all(b_df, db_id, sim_year):
     b_df.loc[b_df['type'].isin(['COL','INS','MIL','OTH']), ['birth_rate']] = 0
 
     # total births =  population * birth rate (fill blanks w zero)
-    b_df['births_rounded'] = (b_df['non_mig_pop'] *
+    b_df['births_rounded'] = (b_df['persons'] *
                               b_df['birth_rate']).fillna(0.0)
     b_df = b_df.round({'births_rounded': 0})
 
@@ -175,7 +175,7 @@ def births_all(b_df, db_id, sim_year):
     # Remove zero rows
     births_db = b_df_notnull[(b_df_notnull.births_m != 0) | (b_df_notnull.births_m != 0)].copy()
     births_db = births_db.reset_index(drop=False)
-    births_db = births_db.drop('mig_in_net',1)
+#    births_db = births_db.drop('mig_in_net',1)
     births_db = births_db.drop('sex',1)
     births_db.rename(columns={'births_m': 'male births'}, inplace=True)
     births_db.rename(columns={'births_f': 'female births'}, inplace=True)
@@ -185,7 +185,7 @@ def births_all(b_df, db_id, sim_year):
     births_db.rename(columns={'births_rounded': 'total births'}, inplace=True)
     births_db.rename(columns={'births_m_float': 'male births float'}, inplace=True)
 
-    log.insert_run('defm.db', db_id, births_db, 'mothers_n_births')
+#    log.insert_run('defm.db', db_id, births_db, 'mothers_n_births')
 
     return b_df_notnull
 
