@@ -7,9 +7,13 @@ from db import log
 from forecast import compute
 from forecast import util
 import shutil
+import luigi.contrib.hadoop
+from pathlib import Path
 
 
 class Population(luigi.Task):
+    year = luigi.Parameter()
+
     def requires(self):
         return None
 
@@ -17,14 +21,20 @@ class Population(luigi.Task):
         return luigi.LocalTarget('temp/data.h5')
 
     def run(self):
-        # yr = pd.Series([2015])
+        # yr = pd.Series([self.year])
         # yr.to_hdf('temp/data.h5', 'year',  mode='w')
         # print yr[0]
-        pop = extract.create_df('population', 'population_table')
-        pop.to_hdf('temp/data.h5', 'pop', format='table', mode='a')
+        my_file = Path('temp/data.h5')
+        if my_file.is_file():
+            print'File exists'
+        else:
+            pop = extract.create_df('population', 'population_table')
+            pop.to_hdf('temp/data.h5', 'pop', format='table', mode='a')
 
 
 class InMigrationRates(luigi.Task):
+    year = luigi.Parameter()
+
     def requires(self):
         return None
 
@@ -38,6 +48,8 @@ class InMigrationRates(luigi.Task):
 
 
 class OutMigrationRates(luigi.Task):
+    year = luigi.Parameter()
+
     def requires(self):
         return None
 
@@ -51,8 +63,10 @@ class OutMigrationRates(luigi.Task):
 
 
 class DeathRates(luigi.Task):
+    year = luigi.Parameter()
+
     def requires(self):
-        return None
+        return Population(self.year)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -63,6 +77,8 @@ class DeathRates(luigi.Task):
 
 
 class BirthRates(luigi.Task):
+    year = luigi.Parameter()
+
     def requires(self):
         return None
 
@@ -75,10 +91,11 @@ class BirthRates(luigi.Task):
 
 
 class MigrationPopulationOut(luigi.Task):
+    year = luigi.Parameter()
 
     def requires(self):
-        return {'population': Population(),
-                'migration_rates': OutMigrationRates()
+        return {
+                'migration_rates': OutMigrationRates(self.year)
                 }
 
     def output(self):
@@ -87,7 +104,7 @@ class MigrationPopulationOut(luigi.Task):
     def run(self):
         mig_rates = pd.read_hdf('temp/data.h5', 'out_mig_rates')
         pop = pd.read_hdf('temp/data.h5', 'pop')
-        pop = compute.rates_for_yr(pop, mig_rates, 2015)
+        pop = compute.rates_for_yr(pop, mig_rates, self.year)
         pop = pop[(pop['type'] == 'HP') & (pop['mildep'] == 'N')]
         # pop.loc[pop['type'].isin(['COL', 'INS', 'MIL', 'OTH']), ['DOUT', 'FOUT']] = 0
         # pop.loc[pop['mildep'].isin(['Y']), ['DOUT', 'DOUT']] = 0
@@ -99,10 +116,11 @@ class MigrationPopulationOut(luigi.Task):
 
 
 class MigrationPopulationIn(luigi.Task):
+    year = luigi.Parameter()
 
     def requires(self):
-        return {'population': Population(),
-                'migration_rates': InMigrationRates()
+        return {
+                'migration_rates': InMigrationRates(self.year)
                 }
 
     def output(self):
@@ -111,7 +129,7 @@ class MigrationPopulationIn(luigi.Task):
     def run(self):
         mig_rates = pd.read_hdf('temp/data.h5', 'in_mig_rates')
         pop = pd.read_hdf('temp/data.h5', 'pop')
-        pop = compute.rates_for_yr(pop, mig_rates, 2015)
+        pop = compute.rates_for_yr(pop, mig_rates, self.year)
         pop = pop[(pop['type'] == 'HP') & (pop['mildep'] == 'N')]
         # pop.loc[pop['type'].isin(['COL', 'INS', 'MIL', 'OTH']), ['DIN', 'DIN']] = 0
         # pop.loc[pop['mildep'].isin(['Y']), ['DIN', 'DIN']] = 0
@@ -124,9 +142,10 @@ class MigrationPopulationIn(luigi.Task):
 
 
 class NonMigratingPopulation(luigi.Task):
+    year = luigi.Parameter()
 
     def requires(self):
-        return {'migration_rates': MigrationPopulationOut()
+        return {'migration_rates': MigrationPopulationOut(self.year)
                 }
 
     def output(self):
@@ -143,10 +162,11 @@ class NonMigratingPopulation(luigi.Task):
 
 
 class DeadPopulation(luigi.Task):
+    year = luigi.Parameter()
 
     def requires(self):
-        return {'non_mig_pop': NonMigratingPopulation(),
-                'death_rates': DeathRates()
+        return {'non_mig_pop': NonMigratingPopulation(self.year),
+                'death_rates': DeathRates(self.year)
                 }
 
     def output(self):
@@ -154,7 +174,7 @@ class DeadPopulation(luigi.Task):
 
     def run(self):
         death_rates = pd.read_hdf('temp/data.h5', 'death_rates')
-        death_rates = death_rates[(death_rates['yr'] == 2015)]
+        death_rates = death_rates[(death_rates['yr'] == self.year)]
         pop = pd.read_hdf('temp/data.h5', 'non_mig_pop')
         pop = pop.join(death_rates)
         pop = pop[(pop['type'] == 'HP') & (pop['mildep'] == 'N')]
@@ -165,10 +185,11 @@ class DeadPopulation(luigi.Task):
 
 
 class NonMigratingSurvivedPop(luigi.Task):
+    year = luigi.Parameter()
 
     def requires(self):
-        return {'non_mig_pop': NonMigratingPopulation(),
-                'dead_pop': DeadPopulation()
+        return {'non_mig_pop': NonMigratingPopulation(self.year),
+                'dead_pop': DeadPopulation(self.year)
                 }
 
     def output(self):
@@ -187,10 +208,11 @@ class NonMigratingSurvivedPop(luigi.Task):
 
 
 class NewBornPopulation(luigi.Task):
+    year = luigi.Parameter()
 
     def requires(self):
-        return {'population': NonMigratingSurvivedPop(),
-                'birth_rates': BirthRates()
+        return {'population': NonMigratingSurvivedPop(self.year),
+                'birth_rates': BirthRates(self.year)
                 }
 
     def output(self):
@@ -200,19 +222,20 @@ class NewBornPopulation(luigi.Task):
         birth_rates = pd.read_hdf('temp/data.h5', 'birth_rates')
         pop = pd.read_hdf('temp/data.h5', 'non_mig_survived_pop')
         pop = pop[(pop['type'] == 'HP') & (pop['mildep'] == 'N')]
-        birth_rates = compute.rates_for_yr(pop, birth_rates, 2015)
-        birth_rates = birth_rates[(birth_rates['yr'] == 2015)]
-        births_per_cohort = compute.births_all(birth_rates, 1, 2015)
+        birth_rates = compute.rates_for_yr(pop, birth_rates, self.year)
+        birth_rates = birth_rates[(birth_rates['yr'] == self.year)]
+        births_per_cohort = compute.births_all(birth_rates, 1, self.year)
 
         # sum newborn population across cohorts
-        newborn = compute.births_sum(births_per_cohort, 1, 2015)
+        newborn = compute.births_sum(births_per_cohort, 1, self.year)
         newborn.to_hdf('temp/data.h5', 'new_born', format='table', mode='a')
 
 
 class AgedPop(luigi.Task):
+    year = luigi.Parameter()
 
     def requires(self):
-        return {'non_mig_survived_pop': NonMigratingSurvivedPop()
+        return {'non_mig_survived_pop': NonMigratingSurvivedPop(self.year)
                 }
 
     def output(self):
@@ -238,10 +261,11 @@ class AgedPop(luigi.Task):
 
 
 class NewPopulation(luigi.Task):
+    year = luigi.Parameter()
 
     def requires(self):
-        return {'new_born': NewBornPopulation(),
-                'in_mig_pop': MigrationPopulationIn()
+        return {'new_born': NewBornPopulation(self.year),
+                'in_mig_pop': MigrationPopulationIn(self.year)
                 }
 
     def output(self):
@@ -262,11 +286,19 @@ class NewPopulation(luigi.Task):
 
 
 class FinalPopulation(luigi.Task):
+    year = luigi.Parameter()
+
+    @property
+    def priority(self):
+        return 10000 - self.year
 
     def requires(self):
-        return {'aged_pop': AgedPop(),
-                'new_pop': NewPopulation()
+        return {'aged_pop': AgedPop(self.year),
+                'new_pop': NewPopulation(self.year)
                 }
+
+    def output(self):
+        return luigi.LocalTarget('temp/data.h5')
 
     def run(self):
         aged_pop = pd.read_hdf('temp/data.h5', 'aged_pop')
@@ -281,9 +313,19 @@ class FinalPopulation(luigi.Task):
         pop.to_hdf('temp/data.h5', 'pop', format='table', mode='a')
 
 
+class Iter(luigi.contrib.hadoop.JobTask):
+
+    def requires(self):
+        return [FinalPopulation(y) for y in range(2015, 2017)]
+
+    def output(self):
+        return luigi.LocalTarget('temp/data.h5')
+
+    def run(self):
+        print 'complete'
+
 if __name__ == '__main__':
 
     shutil.rmtree('temp')
     os.makedirs('temp')
-
-    luigi.run(main_task_cls=FinalPopulation)
+    luigi.run(main_task_cls=Iter)
