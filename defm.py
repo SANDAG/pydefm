@@ -27,7 +27,7 @@ pd.set_option('display.multi_sparse', False)
 
 # rate versions to result database & return primary key for table
 # db_run_id = log.new_run('model_summary.db')
-db_run_id = log.new_run('defm.db')
+db_run_id = log.new_run()
 
 years = util.yaml_to_dict('model_config.yml', 'years')
 

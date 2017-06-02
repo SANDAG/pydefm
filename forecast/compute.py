@@ -242,7 +242,7 @@ def births_sum(df,db_id,sim_year):
     newborns.rename(columns={'persons': 'newborns'}, inplace=True)
     newborns = newborns.drop('households', 1)
 
-    log.insert_run('defm.db', db_id, newborns, 'newborns')
+   # log.insert_run('defm.db', db_id, newborns, 'newborns')
 #    log.insert_run('newborns.db', db_id, births_mf, 'newborns_' +
 #                   str(sim_year))
     births_mf = births_mf.drop('yr', 1)
@@ -253,7 +253,7 @@ def births_sum(df,db_id,sim_year):
     # keep rows in which either type != 'HP' OR mildep != 'Y'
     # which results in dropping rows  where type = 'HP' AND mildep = 'Y'
     births_mf = births_mf[((births_mf.type != 'HP') | (births_mf.mildep != 'Y'))]
-
+    births_mf.rename(columns={'persons': 'new_born'}, inplace=True)
 
     return births_mf
 

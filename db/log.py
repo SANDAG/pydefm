@@ -7,7 +7,8 @@ from pysandag.database import get_connection_string
 
 import os
 
-def new_run(db_name):
+
+def new_run():
     Base = declarative_base()
     table_name = 'run_log'
     class Run(Base):
