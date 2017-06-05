@@ -8,9 +8,9 @@ from pysandag.database import get_connection_string
 import os
 
 
-def new_run():
+def new_run(name='defm_run_log'):
     Base = declarative_base()
-    table_name = 'run_log'
+    table_name = name
     class Run(Base):
         __tablename__ = table_name
         # define columns for the table

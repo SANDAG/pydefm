@@ -80,3 +80,16 @@ FROM    %s
 WHERE   rate_type = 'OTH' AND
         rate_version = %s
 """
+
+inc_pop = """
+SELECT  age,
+        race_ethn,
+        sex,
+        type,
+        mildep,
+        persons,
+        households,
+        yr
+FROM    %s
+WHERE   run_id = %s
+"""
