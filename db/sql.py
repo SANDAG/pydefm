@@ -8,52 +8,52 @@ Note: rate versions refer to different data sources
 # BASE POPULATION (2010)
 population = """
 SELECT  age,
-        race_ethn,
+        r as race_ethn,
         sex,
         type,
-        mildep,
+        COALESCE(mildep, 'N')as mildep,
         persons,
-        households
+        COALESCE(households, 0) as households
 FROM    %s
-WHERE   bp_version = %s
+WHERE   base_population_id = %s
 """
 
 # MIGRATION RATES
 # for DIN(domestic in), DOUT(domestic out), FIN(foreign in), FOUT(foreign out)
 migration = """
-SELECT  rate_type AS migration,
+SELECT
         yr,
         age,
-        race_ethn,
+        race as race_ethn,
         sex,
-        rate
+        DIN,
+        DOUT,
+        FIN,
+        FOUT
 FROM    %s
-WHERE   rate_type IN ('DIN','DOUT','FIN','FOUT') AND
-        rate_version = %s
+WHERE   migration_rate_id = %s
 """
 
 # BIRTH RATES
 birth = """
 SELECT  age,
-        race_ethn,
-        sex,
-        rate as birth_rate,
+        race as race_ethn,
+        sex = 'F',
+        birth_rate,
         yr
 FROM    %s
-WHERE   rate_type = 'B' AND
-        rate_version = %s
+WHERE   birth_rate_id = %s
 """
 
 # DEATH RATES
 death = """
 SELECT  yr,
         age,
-        race_ethn,
+        race as race_ethn,
         sex,
-        rate as death_rate
+        death_rate
 FROM    %s
-WHERE   rate_type = 'D' AND
-        rate_version = %s
+WHERE   death_rate_id = %s
 """
 
 # SPECIAL CASE: INS

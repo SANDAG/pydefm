@@ -51,13 +51,13 @@ class InMigrationRates(luigi.Task):
     year = luigi.Parameter()
 
     def requires(self):
-        return None
+        return Population(self.year)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
 
     def run(self):
-        mig_rates = extract.create_df('migration', 'rate_table', pivot=True)
+        mig_rates = extract.create_df('migration', 'migration_rate_table')
         mig_rates = mig_rates[['yr', 'DIN', 'FIN']]
         mig_rates.to_hdf('temp/data.h5', 'in_mig_rates', format='table', mode='a')
 
@@ -66,13 +66,13 @@ class OutMigrationRates(luigi.Task):
     year = luigi.Parameter()
 
     def requires(self):
-        return None
+        return Population(self.year)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
 
     def run(self):
-        mig_rates = extract.create_df('migration', 'rate_table', pivot=True)
+        mig_rates = extract.create_df('migration', 'migration_rate_table')
         mig_rates = mig_rates[['yr', 'DOUT', 'FOUT']]
         mig_rates.to_hdf('temp/data.h5', 'out_mig_rates', format='table', mode='a')
 
@@ -87,7 +87,7 @@ class DeathRates(luigi.Task):
         return luigi.LocalTarget('temp/data.h5')
 
     def run(self):
-        death_rates = extract.create_df('death', 'rate_table')
+        death_rates = extract.create_df('death', 'death_rate_table')
         death_rates.to_hdf('temp/data.h5', 'death_rates', format='table', mode='a')
 
 
@@ -95,13 +95,13 @@ class BirthRates(luigi.Task):
     year = luigi.Parameter()
 
     def requires(self):
-        return None
+        return Population(self.year)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
 
     def run(self):
-        birth_rates = extract.create_df('birth', 'rate_table')
+        birth_rates = extract.create_df('birth', 'birth_rate_table')
         birth_rates.to_hdf('temp/data.h5', 'birth_rates', format='table', mode='a')
 
 
@@ -120,12 +120,12 @@ class MigrationPopulationOut(luigi.Task):
         mig_rates = pd.read_hdf('temp/data.h5', 'out_mig_rates')
         pop = pd.read_hdf('temp/data.h5', 'pop')
         pop = compute.rates_for_yr(pop, mig_rates, self.year)
-        pop = pop[(pop['type'] == 'HP') & (pop['mildep'] == 'N')]
+
+        pop = pop[(pop['type'] == 'HHP') & (pop['mildep'] == 'N')]
 
         pop['mig_Dout'] = (pop['persons'] * pop['DOUT']).round()
         pop['mig_Fout'] = (pop['persons'] * pop['FOUT']).round()
         pop = pop[['mig_Dout', 'mig_Fout']]
-
         pop.to_hdf('temp/data.h5', 'mig_out', format='table', mode='a')
 
 
@@ -144,7 +144,7 @@ class MigrationPopulationIn(luigi.Task):
         mig_rates = pd.read_hdf('temp/data.h5', 'in_mig_rates')
         pop = pd.read_hdf('temp/data.h5', 'pop')
         pop = compute.rates_for_yr(pop, mig_rates, self.year)
-        pop = pop[(pop['type'] == 'HP') & (pop['mildep'] == 'N')]
+        pop = pop[(pop['type'] == 'HHP') & (pop['mildep'] == 'N')]
 
         pop['mig_Din'] = (pop['persons'] * pop['DIN']).round()
         pop['mig_Fin'] = (pop['persons'] * pop['FIN']).round()
@@ -190,7 +190,7 @@ class DeadPopulation(luigi.Task):
         death_rates = death_rates[(death_rates['yr'] == self.year)]
         pop = pd.read_hdf('temp/data.h5', 'non_mig_pop')
         pop = pop.join(death_rates)
-        pop = pop[(pop['type'] == 'HP') & (pop['mildep'] == 'N')]
+        pop = pop[(pop['type'] == 'HHP') & (pop['mildep'] == 'N')]
         pop['deaths'] = (pop['non_mig_pop'] * pop['death_rate']).round()
 
         # do we apply death rates to mil pop?
@@ -235,7 +235,7 @@ class NewBornPopulation(luigi.Task):
     def run(self):
         birth_rates = pd.read_hdf('temp/data.h5', 'birth_rates')
         pop = pd.read_hdf('temp/data.h5', 'non_mig_survived_pop')
-        pop = pop[(pop['type'] == 'HP') & (pop['mildep'] == 'N')]
+        pop = pop[(pop['type'] == 'HHP') & (pop['mildep'] == 'N')]
         birth_rates = compute.rates_for_yr(pop, birth_rates, self.year)
         birth_rates = birth_rates[(birth_rates['yr'] == self.year)]
         births_per_cohort = compute.births_all(birth_rates, 1, self.year)
