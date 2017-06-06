@@ -16,6 +16,7 @@ import defm_luigi as dl
 
 
 class IncPopulation(luigi.Task):
+    year = luigi.Parameter()
 
     def requires(self):
         return None
@@ -44,9 +45,10 @@ class IncPopulation(luigi.Task):
 
 
 class IncomeTypeRates(luigi.Task):
+    year = luigi.Parameter()
 
     def requires(self):
-        return IncPopulation()
+        return IncPopulation(self.year)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -58,6 +60,7 @@ class IncomeTypeRates(luigi.Task):
 
 
 class AvgIncomeType(luigi.Task):
+    year = luigi.Parameter()
 
     def requires(self):
         return None
@@ -72,9 +75,11 @@ class AvgIncomeType(luigi.Task):
 
 
 class NonSelfEmployedPop(luigi.Task):
+    year = luigi.Parameter()
+
     def requires(self):
-        return {'pop': IncPopulation(),
-                'inc_type_rates': IncomeTypeRates()}
+        return {'pop': IncPopulation(self.year),
+                'inc_type_rates': IncomeTypeRates(self.year)}
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -88,9 +93,11 @@ class NonSelfEmployedPop(luigi.Task):
 
 
 class NonSelfEmployedIncome(luigi.Task):
+    year = luigi.Parameter()
+
     def requires(self):
-        return {'non_self_employed_pop': NonSelfEmployedPop(),
-                'avg_income_type': AvgIncomeType()}
+        return {'non_self_employed_pop': NonSelfEmployedPop(self.year),
+                'avg_income_type': AvgIncomeType(self.year)}
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -100,8 +107,10 @@ class NonSelfEmployedIncome(luigi.Task):
 
 
 class SelfEmployedIncome(luigi.Task):
+    year = luigi.Parameter()
+
     def requires(self):
-        return NonSelfEmployedPop()
+        return NonSelfEmployedPop(self.year)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -111,9 +120,11 @@ class SelfEmployedIncome(luigi.Task):
 
 
 class TotalIncome(luigi.Task):
+    year = luigi.Parameter()
+
     def requires(self):
-        return {'non_self_employed_inc': NonSelfEmployedIncome(),
-                'self_employed_inc': SelfEmployedIncome()}
+        return {'non_self_employed_inc': NonSelfEmployedIncome(self.year),
+                'self_employed_inc': SelfEmployedIncome(self.year)}
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -122,7 +133,18 @@ class TotalIncome(luigi.Task):
         print 'TotalIncome'
 
 
+class IncIter(luigi.contrib.hadoop.JobTask):
+
+    def requires(self):
+        return [TotalIncome(y) for y in range(2015, 2016)]
+
+    def output(self):
+        return luigi.LocalTarget('temp/data.h5')
+
+    def run(self):
+        print 'complete'
+
 if __name__ == '__main__':
     shutil.rmtree('temp')
     os.makedirs('temp')
-    luigi.run(main_task_cls=TotalIncome)
+    luigi.run(main_task_cls=IncIter)

@@ -116,7 +116,7 @@ def non_mig(nm_df, db_id, sim_year):
     return nm_df
 
 
-def births_all(b_df, db_id, sim_year):
+def births_all(b_df, db_id, sim_year, pop_col='persons'):
     """
     Calculate births for given year based on rates.
     Predict male births as 51% of all births & female births as 49%.
@@ -130,7 +130,8 @@ def births_all(b_df, db_id, sim_year):
         primary key for current simulation
     sim_year : int
         year being simulated
-
+    pop_col : string
+        column name from which births to be calculated
     Returns
     -------
     b_df : pandas DataFrame
@@ -143,7 +144,7 @@ def births_all(b_df, db_id, sim_year):
     b_df.loc[b_df['type'].isin(['COL','INS','MIL','OTH']), ['birth_rate']] = 0
 
     # total births =  population * birth rate (fill blanks w zero)
-    b_df['births_rounded'] = (b_df['persons'] *
+    b_df['births_rounded'] = (b_df[pop_col] *
                               b_df['birth_rate']).fillna(0.0)
     b_df = b_df.round({'births_rounded': 0})
 

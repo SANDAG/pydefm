@@ -238,7 +238,7 @@ class NewBornPopulation(luigi.Task):
         pop = pop[(pop['type'] == 'HHP') & (pop['mildep'] == 'N')]
         birth_rates = compute.rates_for_yr(pop, birth_rates, self.year)
         birth_rates = birth_rates[(birth_rates['yr'] == self.year)]
-        births_per_cohort = compute.births_all(birth_rates, 1, self.year)
+        births_per_cohort = compute.births_all(birth_rates, 1, self.year, pop_col='non_mig_survived_pop')
 
         # sum newborn population across cohorts
         newborn = compute.births_sum(births_per_cohort, 1, self.year)
@@ -372,7 +372,7 @@ class ExportTables(luigi.Task):
 class Iter(luigi.contrib.hadoop.JobTask):
 
     def requires(self):
-        return [ExportTables(y) for y in range(2015, 2017)]
+        return [ExportTables(y) for y in range(2011, 2012)]
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
