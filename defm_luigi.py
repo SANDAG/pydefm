@@ -240,8 +240,27 @@ class NewBornPopulation(luigi.Task):
         birth_rates = birth_rates[(birth_rates['yr'] == self.year)]
         births_per_cohort = compute.births_all(birth_rates, 1, self.year, pop_col='non_mig_pop')
 
+        death_rates = pd.read_hdf('temp/data.h5', 'death_rates')
+        death_rates = death_rates[(death_rates['yr'] == self.year)]
         # sum newborn population across cohorts
         newborn = compute.births_sum(births_per_cohort, 1, self.year)
+
+        newborn = newborn.join(death_rates)
+        newborn['new_deaths'] = (newborn['new_born'] * newborn['death_rate']).round()
+        newborn['new_born'] = (newborn['new_born'] - newborn['new_deaths']).round()
+
+        newborn.to_csv('1.csv')
+        dead_pop = pd.read_hdf('temp/data.h5', 'dead_pop')
+        dead_pop = dead_pop.join(newborn['new_deaths'])
+
+        dead_pop = dead_pop.fillna(0)
+        dead_pop['deaths'] = (dead_pop['deaths'] + dead_pop['new_deaths']).round()
+
+        dead_pop = dead_pop.drop(['new_deaths'], 1)
+
+        dead_pop.to_hdf('temp/data.h5', 'dead_pop', format='table', mode='a')
+
+        newborn = newborn.drop(['new_deaths', 'death_rate'], 1)
         newborn.to_hdf('temp/data.h5', 'new_born', format='table', mode='a')
 
 
