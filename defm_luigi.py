@@ -225,7 +225,7 @@ class NewBornPopulation(luigi.Task):
     year = luigi.Parameter()
 
     def requires(self):
-        return {'population': NonMigratingSurvivedPop(self.year),
+        return {'non_mig_population': NonMigratingPopulation(self.year),
                 'birth_rates': BirthRates(self.year)
                 }
 
@@ -234,11 +234,11 @@ class NewBornPopulation(luigi.Task):
 
     def run(self):
         birth_rates = pd.read_hdf('temp/data.h5', 'birth_rates')
-        pop = pd.read_hdf('temp/data.h5', 'non_mig_survived_pop')
+        pop = pd.read_hdf('temp/data.h5', 'non_mig_pop')
         pop = pop[(pop['type'] == 'HHP') & (pop['mildep'] == 'N')]
         birth_rates = compute.rates_for_yr(pop, birth_rates, self.year)
         birth_rates = birth_rates[(birth_rates['yr'] == self.year)]
-        births_per_cohort = compute.births_all(birth_rates, 1, self.year, pop_col='non_mig_survived_pop')
+        births_per_cohort = compute.births_all(birth_rates, 1, self.year, pop_col='non_mig_pop')
 
         # sum newborn population across cohorts
         newborn = compute.births_sum(births_per_cohort, 1, self.year)
