@@ -23,14 +23,19 @@ def new_run(name='runs'):
         migration_rate_version = Column(Integer)
         householder_rate_version = Column(Integer)
 
+    #metadata = MetaData(schema="defm")
+
     db_dir = 'results/'
     if not os.path.exists(db_dir):
 
         os.makedirs(db_dir)
 
-    engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
-
-    if not engine.has_table(table_name):
+    engine = create_engine(get_connection_string("model_config.yml", 'output_database')).execution_options(
+        schema_translate_map={
+            None: "defm",  # no schema name -> "defm"
+        })
+    Base.metadata.schema = 'defm'
+    if not engine.has_table(table_name,schema='defm'):
         Base.metadata.create_all(engine)
 
     db_session = sessionmaker(bind=engine)
