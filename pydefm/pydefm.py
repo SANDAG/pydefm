@@ -173,4 +173,3 @@ class FinalPopulation(luigi.Task):
 
 if __name__ == '__main__':
     luigi.run(main_task_cls=FinalPopulation)
-    
