@@ -48,7 +48,6 @@ class Population(luigi.Task):
 
 
 class InMigrationRates(luigi.Task):
-
     year = luigi.Parameter()
 
     def requires(self):
