@@ -1,5 +1,6 @@
 import luigi
-import inspect, os
+import inspect
+import os
 import pandas as pd
 import time
 
@@ -172,3 +173,4 @@ class FinalPopulation(luigi.Task):
 
 if __name__ == '__main__':
     luigi.run(main_task_cls=FinalPopulation)
+    
