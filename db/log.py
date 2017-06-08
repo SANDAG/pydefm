@@ -3,16 +3,18 @@ from forecast import util
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
+from sqlalchemy import MetaData
 from pysandag.database import get_connection_string
 
 import os
 
 
-def new_run(name='defm_run_log'):
+def new_run(name='runs'):
     Base = declarative_base()
     table_name = name
     class Run(Base):
         __tablename__ = table_name
+        __table_args__ = {'schema': 'defm'}
         # define columns for the table
         id = Column(Integer, primary_key=True)
         base_rate_version = Column(Integer)
