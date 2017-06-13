@@ -20,7 +20,7 @@ class Population(luigi.Task):
         return None
 
     def output(self):
-        return luigi.LocalTarget('temp/data.h5')
+        return luigi.LocalTarget('pop.csv')
 
     def run(self):
 
@@ -28,11 +28,13 @@ class Population(luigi.Task):
         if my_file.is_file():
             print'File exists'
         else:
-            db_run_id = log.new_run()
-            run_id = pd.Series([db_run_id])
-            run_id.to_hdf('temp/data.h5', 'run_id',  mode='a')
+            # db_run_id = log.new_run()
+            # run_id = pd.Series([db_run_id])
+            # run_id.to_hdf('temp/data.h5', 'run_id',  mode='a')
             pop = extract.create_df('population', 'population_table')
-            pop.to_hdf('temp/data.h5', 'pop', format='table', mode='a')
+            # pop.to_hdf('temp/data.h5', 'pop', format='table', mode='a')
+            pop.to_csv('pop.csv')
+            '''
             engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
             population_summary = []
             population_summary.append({'Year': self.year - 1,
@@ -45,6 +47,7 @@ class Population(luigi.Task):
 
             summary_df = pd.DataFrame(population_summary)
             summary_df.to_sql(name='population_summary', con=engine, schema='defm', if_exists='append', index=False)
+'''
 
 
 class InMigrationRates(luigi.Task):

@@ -10,8 +10,6 @@ install:
 
 #command to run tests
 script:
-  - pep8 pydefm
-  - py.test --cov pydefm --cov-report term-missing
-
+  - coverage run test.py 
 after_success:
   - coveralls
