@@ -121,9 +121,9 @@ plot5 = figure(plot_height=800, plot_width=800, title="~ Equal",
               tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label="Net Migration",
                  x_axis_label="Year")
 
-plot5.line(df.index.tolist(), df['net_mig_py'], line_width=2, legend="Births Python")
-plot5.line(df.index.tolist(), df['net_mig_sas_1005'], line_width=2, legend="Births SAS (1005)", line_color="orange", line_dash=[4, 4])
-plot5.line(df.index.tolist(), df['net_mig_dof'], line_width=2, legend="Births DOF", line_color="green", line_dash=[4, 4])
+plot5.line(df.index.tolist(), df['net_mig_py'], line_width=2, legend="Net Migration Python")
+plot5.line(df.index.tolist(), df['net_mig_sas_1005'], line_width=2, legend="Net Migration SAS (1005)", line_color="orange", line_dash=[4, 4])
+plot5.line(df.index.tolist(), df['net_mig_dof'], line_width=2, legend="Net Migration DOF", line_color="green", line_dash=[4, 4])
 
 
 # Bokeh time series graphs
