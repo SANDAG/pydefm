@@ -20,7 +20,7 @@ class Population(luigi.Task):
         return None
 
     def output(self):
-        return luigi.LocalTarget('pop.csv')
+        return luigi.LocalTarget('temp/data.h5')
 
     def run(self):
 
@@ -28,13 +28,12 @@ class Population(luigi.Task):
         if my_file.is_file():
             print'File exists'
         else:
-            # db_run_id = log.new_run()
-            # run_id = pd.Series([db_run_id])
-            # run_id.to_hdf('temp/data.h5', 'run_id',  mode='a')
+            db_run_id = log.new_run()
+            run_id = pd.Series([db_run_id])
+            run_id.to_hdf('temp/data.h5', 'run_id',  mode='a')
             pop = extract.create_df('population', 'population_table')
-            # pop.to_hdf('temp/data.h5', 'pop', format='table', mode='a')
-            pop.to_csv('pop.csv')
-            '''
+            pop.to_hdf('temp/data.h5', 'pop', format='table', mode='a')
+
             engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
             population_summary = []
             population_summary.append({'Year': self.year - 1,
@@ -47,7 +46,6 @@ class Population(luigi.Task):
 
             summary_df = pd.DataFrame(population_summary)
             summary_df.to_sql(name='population_summary', con=engine, schema='defm', if_exists='append', index=False)
-'''
 
 
 class InMigrationRates(luigi.Task):
@@ -252,7 +250,6 @@ class NewBornPopulation(luigi.Task):
         newborn['new_deaths'] = (newborn['new_born'] * newborn['death_rate']).round()
         newborn['new_born'] = (newborn['new_born'] - newborn['new_deaths']).round()
 
-        newborn.to_csv('1.csv')
         dead_pop = pd.read_hdf('temp/data.h5', 'dead_pop')
         dead_pop = dead_pop.join(newborn['new_deaths'])
 
@@ -394,7 +391,7 @@ class ExportTables(luigi.Task):
 class Iter(luigi.contrib.hadoop.JobTask):
 
     def requires(self):
-        return [ExportTables(y) for y in range(2011, 2012)]
+        return [ExportTables(y) for y in range(2011, 2051)]
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
