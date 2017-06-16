@@ -14,7 +14,6 @@ setup(
     name='pydefm',
     version='0.1',
     description='San Diego Demographic and Economic Model',
-    long_description = long_description,
     author='San Diego Association of Governments (SANDAG)',
     license='BSD',
     classifiers= [
