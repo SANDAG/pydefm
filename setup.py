@@ -10,12 +10,6 @@ from os import path
 import pydefm
 
 
-here = path.abspath(path.dirname(__file__))
-
-# Get the long description from the README file
-with open(path.join(here, 'README.MD'), encoding='utf-8') as f:
-    long_description = f.read()
-
 setup(
     name='pydefm',
     version='0.1',
