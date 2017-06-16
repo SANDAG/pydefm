@@ -11,9 +11,8 @@ install:
 
 #command to run tests
 script:
-  - python setup.py install
-  - pep8 pydefm
-  - py.test --cov-config .coveragerc --cov=pydefm pydefm/tests/ --cov-report term-missing
+  - nosetests
+  - coverage run --source pydefm setup.py test
 
 after_success:
   - coveralls
