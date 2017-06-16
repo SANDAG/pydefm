@@ -13,6 +13,7 @@ install:
 script:
   - pep8 pydefm
   - py.test pydefm
+  - py.test --cov=pydefm --cov-report term-missing
 
 after_success:
   - coveralls
