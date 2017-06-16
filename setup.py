@@ -1,20 +1,42 @@
-from setuptools import setup, find_packages
+"""A setuptools based setup module.
+See:
+https://packaging.python.org/en/latest/distributing.html
+https://github.com/sandag/pydefm
+"""
 
-with open('README.md') as file:
-    long_description= file.read()
+from setuptools import setup, find_packages
+from codecs import open
+from os import path
+import pydefm
+
+
+here = path.abspath(path.dirname(__file__))
+
+# Get the long description from the README file
+with open(path.join(here, 'README.MD'), encoding='utf-8') as f:
+    long_description = f.read()
 
 setup(
     name='pydefm',
     version='0.1',
     description='San Diego Demographic and Economic Model',
-    author='San Diego Association of Governments',
-    license='BSD-3',
-    url='',
-    classifiers=[
-        'Development Status :: 3 - Alpha',
-        'Programming Language :: Python :: 2.7',
-        'License :: OSI Approved :: BSD License'
+    long_description = long_description,
+    author='San Diego Association of Governments (SANDAG)',
+    license='BSD',
+    classifiers= [
+        'Development Status :: 5 - Production / Stable',
+        'Intended Audience :: Developers',
+        'Topic :: Software Development :: Utilities',
+        'License :: OSI Approved :: BSD License',
+        'Programming Language :: Python :: 2.7'
     ],
-    long_description=long_description,
-    packages=find_packages(exclude=['*.tests'])
+    packages=find_packages(),
+    install_requires = [],
+    test_suite='test'
 )
+
+
+
+
+
+
