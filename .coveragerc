@@ -1,2 +1,4 @@
 [run]
-omit = pydefm/tests/*
+omit =
+    pydefm/tests/*
+    *__init__*
