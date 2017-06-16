@@ -6,11 +6,11 @@ import pandas as pd
 import numpy as np
 from bokeh.io import curdoc
 from bokeh.layouts import row, widgetbox
-from bokeh.models import ColumnDataSource, LabelSet
+from bokeh.models import ColumnDataSource, LabelSet, Plot, DataRange1d, LinearAxis, Grid, LassoSelectTool, WheelZoomTool, SaveTool, ResetTool
 from bokeh.models.widgets import Slider, TextInput
 from bokeh.plotting import figure, output_file, show
-
-
+from bokeh.charts import Bar, output_file, show
+from bokeh.models.glyphs import HBar
 defm_engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
 
 db_connection_string = database.get_connection_string('model_config.yml', 'in_db')
@@ -53,6 +53,37 @@ sas_sql = '''SELECT [yr] as Year
 
 sas_df = pd.read_sql(sas_sql, sql_in_engine, index_col='Year')
 
+
+# Age distribution
+
+pop_sql = '''SELECT age, race_ethn, sex, type, mildep, persons, households, yr
+                FROM defm.population
+                WHERE run_id = 3 and age < 101
+                '''
+pop_df = pd.read_sql(pop_sql, defm_engine, index_col=None)
+
+pop_sum_df = pd.DataFrame(pop_df['persons'].groupby([pop_df['yr'], pop_df['age'],  pop_df['sex']]).sum())
+pop_sum_df.rename(columns={'persons': 'persons_by_age'}, inplace=True)
+
+
+yr_sum_df = pd.DataFrame(pop_df['persons'].groupby([pop_df['yr'], pop_df['sex']]).sum())
+pop_sum_df = pop_sum_df.reset_index(drop=False)
+yr_sum_df = yr_sum_df.reset_index(drop=False)
+pop_sum_df = pop_sum_df.set_index(['yr', 'sex'])
+yr_sum_df = yr_sum_df.set_index(['yr', 'sex'])
+
+pop_sum_df = pop_sum_df.join(yr_sum_df)
+
+pop_sum_df['ratio'] = pop_sum_df['persons_by_age'] / pop_sum_df['persons']
+
+pop_sum_df = pop_sum_df.reset_index(drop=False)
+pop_sum_df = pop_sum_df.set_index(['yr'])
+
+pop_sum_df_m = pop_sum_df.loc[pop_sum_df['sex'] == 'M']
+pop_sum_df_f = pop_sum_df.loc[pop_sum_df['sex'] == 'F']
+
+pop_sum_df_m['age'] = ((pop_sum_df_m['age'] * 2 + 1)/2)
+# pop_sum_df_f['age'] = (pop_sum_df_f['age'] * 2)
 
 # join the 3 data frames
 df = dof_df.join(results_df)
@@ -127,22 +158,39 @@ plot5.line(df.index.tolist(), df['net_mig_dof'], line_width=2, legend="Net Migra
 
 
 # Bokeh time series graphs
-x = df['deaths_py']
-y = df['births_py']
-source = ColumnDataSource(data=df[['deaths_py', 'births_py']])
+y_m = pop_sum_df_m['age'].loc[2011].tolist()
+right_m = pop_sum_df_m['ratio'].loc[2011].tolist()
+
+y_f = pop_sum_df_f['age'].loc[2011].tolist()
+right_f = pop_sum_df_f['ratio'].loc[2011].tolist()
+
+source = ColumnDataSource(data=dict(y_m=y_m, right_m=right_m, y_f=y_f, right_f=right_f))
 
 
 # Set up plot
-plot = figure(plot_height=800, plot_width=800, title="Population",
-              tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label = "Number",
-                 x_axis_label = "Deaths vs Births")
+'''
+plot = Plot(
+    title=None, x_range=xdr, y_range=ydr, plot_width=800, plot_height=800,
+    h_symmetry=False, v_symmetry=False, min_border=0, toolbar_location="right")
+'''
+plot = figure(plot_height=1200, plot_width=1200, title="Population",
+                tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label = "Age",
+                     x_axis_label = "Percentage of the total population")
 
-print source.data['deaths_py'].loc[2011]
+plot6 = figure(plot_height=1200, plot_width=1200, title="Population",
+                tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label = "Age",
+                     x_axis_label = "Percentage of the total population")
 
-plot.vbar(x=[1, 2], width=0.5, bottom=0, top=[source.data['deaths_py'].loc[2011], source.data['births_py'].loc[2011]], source=source)
+glyph1 = HBar(y="y_m", right="right_m", left=0, height=0.5, fill_color="orange", name="Male")
+plot.add_glyph(source, glyph1)
 
-# show(plot)
+glyph2 = HBar(y="y_f", right="right_f", left=0, height=0.5, fill_color="blue", name="Female")
+plot6.add_glyph(source, glyph2)
+
+show(plot)
 # Set up widgets
+
+
 text = TextInput(title="Graph", value='Population over time')
 Year = Slider(title="Year", value=2011, start=2011, end=2050, step=1)
 
@@ -159,9 +207,14 @@ def update_plot(attrname, old, new):
     # Get the current slider values
     yr = Year.value
 
-    source = ColumnDataSource(data=df[['deaths_py', 'births_py']])
-    plot.vbar(x=[1, 2], width=0.5, bottom=0, top=[source.data['deaths_py'].loc[yr], source.data['births_py'].loc[yr]],
-              source=source)
+    y_m = pop_sum_df_m['age'].loc[yr].tolist()
+    right_m = pop_sum_df_m['ratio'].loc[yr].tolist()
+
+    y_f = pop_sum_df_f['age'].loc[yr].tolist()
+    right_f = pop_sum_df_f['ratio'].loc[yr].tolist()
+
+    source.data = dict(y_m=y_m, right_m=right_m, y_f=y_f, right_f=right_f)
+    # plot.vbar(x=range(0, 101), width=0.5, bottom=0, top=pop_sum_df['ratio'].loc[yr].tolist())
 
 for w in [Year]:
     w.on_change('value', update_plot)
@@ -170,10 +223,11 @@ for w in [Year]:
 # Set up layouts and add to document
 inputs = widgetbox(text, Year)
 
-curdoc().add_root(row(inputs, plot, width=800))
+curdoc().add_root(row(inputs, plot, plot6, width=4000))
 curdoc().add_root(row(plot2, width=800))
 curdoc().add_root(row(plot3, width=800))
 curdoc().add_root(row(plot4, width=800))
 curdoc().add_root(row(plot5, width=800))
 
 curdoc().title = "Sliders"
+
