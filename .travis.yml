@@ -11,7 +11,7 @@ install:
 
 #command to run tests
 script:
-  - coverage run --source pydefm setup.py test
+  - py.test --cov pydefm --cov-report term-missing
 
 after_success:
   - coveralls
