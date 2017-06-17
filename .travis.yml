@@ -11,7 +11,7 @@ install:
 
 #command to run tests
 script:
-  - py.test pydefm/test/test_plusone.py --cov pydefm --cov-report term-missing
+  - py.test test/test_plusone.py --cov pydefm --cov-report term-missing
 
 after_success:
   - coveralls
