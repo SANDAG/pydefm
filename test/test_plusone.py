@@ -1,12 +1,6 @@
-import unittest
+import pytest
 from pydefm import plusone
 
-class PrimesTestCase(unittest.TestCase):
-    """Tests for `primes.py`."""
 
-    def test_is_five_prime(self):
-        """Is five successfully determined to be prime?"""
-        self.assertTrue(plusone.is_prime(5))
-
-if __name__ == '__main__':
-    unittest.main()
+def test_answer():
+    assert plusone.inc(3) == 4
