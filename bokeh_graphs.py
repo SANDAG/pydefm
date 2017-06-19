@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 from pysandag.database import get_connection_string
 import pandas as pd
 import numpy as np
-from bokeh.io import curdoc
+from bokeh.io import curdoc, gridplot
 from bokeh.layouts import row, widgetbox
 from bokeh.models import ColumnDataSource, LabelSet, Plot, DataRange1d, LinearAxis, Grid, LassoSelectTool, WheelZoomTool, SaveTool, ResetTool
 from bokeh.models.widgets import Slider, TextInput
@@ -66,11 +66,11 @@ pop_sum_df = pd.DataFrame(pop_df['persons'].groupby([pop_df['yr'], pop_df['age']
 pop_sum_df.rename(columns={'persons': 'persons_by_age'}, inplace=True)
 
 
-yr_sum_df = pd.DataFrame(pop_df['persons'].groupby([pop_df['yr'], pop_df['sex']]).sum())
+yr_sum_df = pd.DataFrame(pop_df['persons'].groupby([pop_df['yr']]).sum())
 pop_sum_df = pop_sum_df.reset_index(drop=False)
 yr_sum_df = yr_sum_df.reset_index(drop=False)
-pop_sum_df = pop_sum_df.set_index(['yr', 'sex'])
-yr_sum_df = yr_sum_df.set_index(['yr', 'sex'])
+pop_sum_df = pop_sum_df.set_index(['yr'])
+yr_sum_df = yr_sum_df.set_index(['yr'])
 
 pop_sum_df = pop_sum_df.join(yr_sum_df)
 
@@ -82,7 +82,7 @@ pop_sum_df = pop_sum_df.set_index(['yr'])
 pop_sum_df_m = pop_sum_df.loc[pop_sum_df['sex'] == 'M']
 pop_sum_df_f = pop_sum_df.loc[pop_sum_df['sex'] == 'F']
 
-pop_sum_df_m['age'] = ((pop_sum_df_m['age'] * 2 + 1)/2)
+# pop_sum_df_m['age'] = ((pop_sum_df_m['age'] * 2 + 1)/2)
 # pop_sum_df_f['age'] = (pop_sum_df_f['age'] * 2)
 
 # join the 3 data frames
@@ -157,6 +157,8 @@ plot5.line(df.index.tolist(), df['net_mig_sas_1005'], line_width=2, legend="Net 
 plot5.line(df.index.tolist(), df['net_mig_dof'], line_width=2, legend="Net Migration DOF", line_color="green", line_dash=[4, 4])
 
 
+pop_sum_df_m['ratio'] = (pop_sum_df_m['ratio'] * -1)
+
 # Bokeh time series graphs
 y_m = pop_sum_df_m['age'].loc[2011].tolist()
 right_m = pop_sum_df_m['ratio'].loc[2011].tolist()
@@ -173,25 +175,24 @@ plot = Plot(
     title=None, x_range=xdr, y_range=ydr, plot_width=800, plot_height=800,
     h_symmetry=False, v_symmetry=False, min_border=0, toolbar_location="right")
 '''
-plot = figure(plot_height=1200, plot_width=1200, title="Population",
+plot = figure(plot_height=1200, plot_width=2400, title="Population",
                 tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label = "Age",
                      x_axis_label = "Percentage of the total population")
 
-plot6 = figure(plot_height=1200, plot_width=1200, title="Population",
-                tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label = "Age",
-                     x_axis_label = "Percentage of the total population")
-
-glyph1 = HBar(y="y_m", right="right_m", left=0, height=0.5, fill_color="orange", name="Male")
+glyph1 = HBar(y="y_m", right="right_m", left=0, height=0.5, fill_color="blue", name="Male")
 plot.add_glyph(source, glyph1)
 
-glyph2 = HBar(y="y_f", right="right_f", left=0, height=0.5, fill_color="blue", name="Female")
-plot6.add_glyph(source, glyph2)
+glyph2 = HBar(y="y_f", right="right_f", left=0, height=0.5, fill_color="orange", name="Female")
+plot.add_glyph(source, glyph2)
+
+plot.xaxis.bounds = (-.01, .01)
 
 show(plot)
 # Set up widgets
 
 
 text = TextInput(title="Graph", value='Population over time')
+
 Year = Slider(title="Year", value=2011, start=2011, end=2050, step=1)
 
 
@@ -223,7 +224,7 @@ for w in [Year]:
 # Set up layouts and add to document
 inputs = widgetbox(text, Year)
 
-curdoc().add_root(row(inputs, plot, plot6, width=4000))
+curdoc().add_root(row(inputs, plot, width=4000))
 curdoc().add_root(row(plot2, width=800))
 curdoc().add_root(row(plot3, width=800))
 curdoc().add_root(row(plot4, width=800))

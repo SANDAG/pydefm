@@ -288,6 +288,16 @@ class AgedPop(luigi.Task):
         non_mig_survived_pop['age'] = non_mig_survived_pop['age'] + non_mig_survived_pop['increment']
         non_mig_survived_pop = non_mig_survived_pop.append(temp)
 
+        #'''
+        temp_2 = non_mig_survived_pop[(non_mig_survived_pop['age'] >= 101)]
+        temp_2 = pd.DataFrame(temp_2[['persons', 'households']].groupby([temp_2['race_ethn'], temp_2['sex'], temp_2['type'], temp_2['mildep']]).sum())
+        temp_2['age'] = 101
+        temp_2 = temp_2.reset_index(drop=False)
+
+        non_mig_survived_pop = non_mig_survived_pop.append(temp_2)
+        non_mig_survived_pop = non_mig_survived_pop[non_mig_survived_pop.age < 102]
+        #'''
+
         non_mig_survived_pop = non_mig_survived_pop.set_index(['age', 'race_ethn', 'sex'])
 
         non_mig_survived_pop.to_hdf('temp/data.h5', 'aged_pop', format='table', mode='a')
