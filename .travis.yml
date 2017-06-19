@@ -11,7 +11,7 @@ install:
 
 #command to run tests
 script:
-  - py.test --cov=pydefm test/
+  - py.test --cov=pydefm tests/
 
 after_success:
   - coveralls
