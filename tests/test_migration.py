@@ -22,6 +22,21 @@ def m_rates():
                       'FOUT': [0.000000, 0.000000, 0.000000]})
 
 
+@pytest.fixture
+def joined_pop_rates():
+    return DataFrame([[859,0.027663,0.000000],
+                 [73, 0.057815,0.000000],
+                 [4493, np.nan,np.nan]],
+                columns=['persons', 'DOUT','FOUT'],
+                index=MultiIndex(levels = [
+                    [10, 32, 72],
+                    ['H', 'W', 'B'],
+                    ['M', 'F', 'M']],
+                    labels=[[0, 1, 2], [0, 1, 2],[0, 1, 2]],
+                    names=['age', 'race_ethn','sex']))
+
+
+
 @pytest.mark.parametrize(
     "expected",
     [(DataFrame([[859,0.027663,0.000000],
@@ -38,4 +53,21 @@ def test_migration(pop, m_rates, expected):
     pop = pop.set_index(['age', 'race_ethn', 'sex'])
     m_rates = m_rates.set_index(['age', 'race_ethn', 'sex'])
     result =  migration.migrating_pop(pop, m_rates)
+    tm.assert_frame_equal(result, expected)
+
+
+@pytest.mark.parametrize(
+    "expected",
+    [(DataFrame([[859,0.027663,0.000000,24,0,835],
+                 [73, 0.057815,0.000000,4,0,69],
+                 [4493, np.nan,np.nan,np.nan,np.nan]],
+                columns=['persons', 'DOUT','FOUT','mig_Dout','mig_Fout','non_mig_pop'],
+                index=MultiIndex(levels = [
+                    [10, 32, 72],
+                    ['H', 'W', 'B'],
+                    ['M', 'F', 'M']],
+                    labels=[[0, 1, 2], [0, 1, 2],[0, 1, 2]],
+                    names=['age', 'race_ethn','sex'])))])
+def test_non_migrating_pop(joined_pop_rates, expected):
+    result = migration.non_migrating_pop(joined_pop_rates)
     tm.assert_frame_equal(result, expected)
