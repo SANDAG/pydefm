@@ -11,6 +11,11 @@ from bokeh.models.widgets import Slider, TextInput
 from bokeh.plotting import figure, output_file, show
 from bokeh.charts import Bar, output_file, show
 from bokeh.models.glyphs import HBar
+from bokeh.models import (
+    ColumnDataSource, HoverTool, SingleIntervalTicker, Slider, Button, Label,
+    CategoricalColorMapper,
+)
+
 defm_engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
 
 db_connection_string = database.get_connection_string('model_config.yml', 'in_db')
@@ -23,10 +28,21 @@ results_sql = '''SELECT "Population" as pop_py
                         ,mig_in - mig_out as net_mig_py
                         ,new_born as births_py
                 FROM defm.population_summary
-                WHERE "Run_id" = 3;'''
+                WHERE "Run_id" = 14;'''
 
 results_df = pd.read_sql(results_sql, defm_engine, index_col='Year')
 
+results_inc_sql = '''SELECT  yr as "Year",
+                            "Interest" as interest_py,
+                             "Other" as other_py,
+                             "Public_Assistance" as public_assistance_py,
+                             "Retirement" as retirement_py,
+                             "Supplemental_Social_Security" as supplemental_social_security_py,
+                             "Social_Security" as social_security_py
+                         FROM defm.non_wage_income
+                         WHERE run_id = 2;'''
+
+results_inc_df = pd.read_sql(results_inc_sql, defm_engine, index_col='Year')
 
 dof_sql = '''
             SELECT TOP 1000 [county_name]
@@ -44,8 +60,8 @@ dof_df = pd.read_sql(dof_sql, sql_in_engine, index_col='Year')
 
 sas_sql = '''SELECT [yr] as Year
             ,[p] as pop_sas_1005
-            ,d as deaths_sas_1005
-            ,b_hp as births_sas_1005
+            ,d_hp as deaths_sas_1005
+            ,b_nonmil as births_sas_1005
             ,mig_net as net_mig_sas_1005
             FROM [isam].[demographic_output].[summary]
             WHERE sim_id = 1005
@@ -53,12 +69,26 @@ sas_sql = '''SELECT [yr] as Year
 
 sas_df = pd.read_sql(sas_sql, sql_in_engine, index_col='Year')
 
+sas_inc_sql = '''
+    SELECT
+      yr as Year,
+      Interest as Interest_sas,
+      Other as Other_sas,
+      Public_Assistance as Public_Assistance_sas,
+      Retirement as Retirement_sas,
+      Supplemental_Social_Security as Supplemental_Social_Security_sas,
+      Social_Security as Social_Security_sas
+    FROM [isam].[economic_output].[unearned_income]
+    '''
+
+sas_inc_df = pd.read_sql(sas_inc_sql, sql_in_engine, index_col='Year')
+
 
 # Age distribution
 
 pop_sql = '''SELECT age, race_ethn, sex, type, mildep, persons, households, yr
                 FROM defm.population
-                WHERE run_id = 3 and age < 101
+                WHERE run_id = 14 and age < 102
                 '''
 pop_df = pd.read_sql(pop_sql, defm_engine, index_col=None)
 
@@ -89,34 +119,7 @@ pop_sum_df_f = pop_sum_df.loc[pop_sum_df['sex'] == 'F']
 df = dof_df.join(results_df)
 df = df.join(sas_df)
 
-'''
-# Population graphs
-a = df[['pop_py', 'pop_dof', 'pop_sas_1005']].plot()
-plt.title('Main difference: applying survival rates to new born ')
-plt.savefig('temp/pop.png')
-plt.close()
-
-
-# Deaths summary graphs
-b = df[['deaths_py', 'deaths_dof', 'deaths_sas_1005']].plot()
-plt.title('Main difference: not allowing GQ to die')
-plt.savefig('temp/deaths.png')
-plt.close()
-
-
-# Births summary graphs
-c = df[['births_py', 'births_dof', 'births_sas_1005']].plot()
-plt.title('Main difference: not allowing mil_dep to have new borns')
-plt.savefig('temp/births.png')
-plt.close()
-
-
-# Net migration summary graphs
-d = df[['net_mig_py', 'net_mig_dof', 'net_mig_sas_1005']].plot()
-plt.title('Blue amd red lines are ~ the same')
-plt.savefig('temp/net_mig.png')
-plt.close()
-'''
+df2 = sas_inc_df.join(results_inc_df)
 
 plot2 = figure(plot_height=800, plot_width=800, title="Main difference: applying survival rates to new born",
               tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label = "Population",
@@ -148,6 +151,7 @@ plot4.line(df.index.tolist(), df['births_dof'], line_width=2, legend="Births DOF
 
 
 # Net Migration
+
 plot5 = figure(plot_height=800, plot_width=800, title="~ Equal",
               tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label="Net Migration",
                  x_axis_label="Year")
@@ -156,6 +160,33 @@ plot5.line(df.index.tolist(), df['net_mig_py'], line_width=2, legend="Net Migrat
 plot5.line(df.index.tolist(), df['net_mig_sas_1005'], line_width=2, legend="Net Migration SAS (1005)", line_color="orange", line_dash=[4, 4])
 plot5.line(df.index.tolist(), df['net_mig_dof'], line_width=2, legend="Net Migration DOF", line_color="green", line_dash=[4, 4])
 
+
+# Income results
+
+plot6 = figure(plot_height=800, plot_width=800, title="Income Model",
+              tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label="Dollars ($)",
+                 x_axis_label="Year")
+
+plot6.line(df2.index.tolist(), df2['interest_py'], line_width=2, legend="Interest PY")
+plot6.line(df2.index.tolist(), df2['Interest_sas'], line_width=2, legend="Interest SAS", line_color="orange", line_dash=[4, 4])
+
+plot6.line(df2.index.tolist(), df2['other_py'], line_width=2, legend="Other PY", line_color="red")
+plot6.line(df2.index.tolist(), df2['Other_sas'], line_width=2, legend="Other SAS", line_color="orange", line_dash=[4, 4])
+
+plot6.line(df2.index.tolist(), df2['public_assistance_py'], line_width=2, legend="Public Assistance PY", line_color="green")
+plot6.line(df2.index.tolist(), df2['Public_Assistance_sas'], line_width=2, legend="Public Assistance SAS", line_color="orange", line_dash=[4, 4])
+
+plot6.line(df2.index.tolist(), df2['retirement_py'], line_width=2, legend="Retirement PY", line_color="black")
+plot6.line(df2.index.tolist(), df2['Retirement_sas'], line_width=2, legend="Retirement SAS", line_color="orange", line_dash=[4, 4])
+
+plot6.line(df2.index.tolist(), df2['supplemental_social_security_py'], line_width=2, legend="Supplemental Social Security PY", line_color="purple")
+plot6.line(df2.index.tolist(), df2['Supplemental_Social_Security_sas'], line_width=2, legend="Supplemental Social Security SAS", line_color="orange", line_dash=[4, 4])
+
+plot6.line(df2.index.tolist(), df2['social_security_py'], line_width=2, legend="Social Security PY", line_color="blue")
+plot6.line(df2.index.tolist(), df2['Social_Security_sas'], line_width=2, legend="Social Security SAS", line_color="orange", line_dash=[4, 4])
+
+plot6.legend.location = "top_left"
+plot6.legend.background_fill_alpha = 0.5
 
 pop_sum_df_m['ratio'] = (pop_sum_df_m['ratio'] * -1)
 
@@ -170,11 +201,6 @@ source = ColumnDataSource(data=dict(y_m=y_m, right_m=right_m, y_f=y_f, right_f=r
 
 
 # Set up plot
-'''
-plot = Plot(
-    title=None, x_range=xdr, y_range=ydr, plot_width=800, plot_height=800,
-    h_symmetry=False, v_symmetry=False, min_border=0, toolbar_location="right")
-'''
 plot = figure(plot_height=1200, plot_width=2400, title="Population",
                 tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label = "Age",
                      x_axis_label = "Percentage of the total population")
@@ -186,8 +212,9 @@ glyph2 = HBar(y="y_f", right="right_f", left=0, height=0.5, fill_color="orange",
 plot.add_glyph(source, glyph2)
 
 plot.xaxis.bounds = (-.01, .01)
+plot.add_tools(HoverTool(tooltips="@index", show_arrow=False, point_policy='follow_mouse'))
 
-show(plot)
+show(plot6)
 # Set up widgets
 
 
@@ -215,7 +242,7 @@ def update_plot(attrname, old, new):
     right_f = pop_sum_df_f['ratio'].loc[yr].tolist()
 
     source.data = dict(y_m=y_m, right_m=right_m, y_f=y_f, right_f=right_f)
-    # plot.vbar(x=range(0, 101), width=0.5, bottom=0, top=pop_sum_df['ratio'].loc[yr].tolist())
+
 
 for w in [Year]:
     w.on_change('value', update_plot)
@@ -229,6 +256,7 @@ curdoc().add_root(row(plot2, width=800))
 curdoc().add_root(row(plot3, width=800))
 curdoc().add_root(row(plot4, width=800))
 curdoc().add_root(row(plot5, width=800))
+curdoc().add_root(row(plot6, width=800))
 
 curdoc().title = "Sliders"
 

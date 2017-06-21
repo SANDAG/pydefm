@@ -91,5 +91,26 @@ SELECT  age,
         households,
         yr
 FROM    %s
-WHERE   run_id = %s
+WHERE   run_id = %s and type = 'HHP'
+"""
+
+
+inc_pop_mil = """
+SELECT  age,
+        r as race_ethn,
+        sex,
+        COALESCE(mildep, 'N')as mildep,
+        persons - not_mil as mil_mildep
+FROM    %s
+WHERE   base_population_id = %s and type = 'HHP'
+"""
+
+inc_shares = """
+SELECT yr
+      ,age_cat
+      ,income_type
+      ,income
+      ,share
+FROM %s
+WHERE income_id = %s
 """

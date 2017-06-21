@@ -46,6 +46,10 @@ class Population(luigi.Task):
 
             summary_df = pd.DataFrame(population_summary)
             summary_df.to_sql(name='population_summary', con=engine, schema='defm', if_exists='append', index=False)
+            pop['yr'] = 2010
+            pop['run_id'] = db_run_id
+            pop.to_sql(name='population', con=engine, schema='defm', if_exists='append', index=True)
+            print pop
 
 
 class InMigrationRates(luigi.Task):
@@ -248,7 +252,7 @@ class NewBornPopulation(luigi.Task):
 
         newborn = newborn.join(death_rates)
         newborn['new_deaths'] = (newborn['new_born'] * newborn['death_rate']).round()
-        newborn['new_born'] = (newborn['new_born'] - newborn['new_deaths']).round()
+        # newborn['new_born'] = (newborn['new_born'] - newborn['new_deaths']).round()
 
         dead_pop = pd.read_hdf('temp/data.h5', 'dead_pop')
         dead_pop = dead_pop.join(newborn['new_deaths'])
@@ -288,18 +292,19 @@ class AgedPop(luigi.Task):
         non_mig_survived_pop['age'] = non_mig_survived_pop['age'] + non_mig_survived_pop['increment']
         non_mig_survived_pop = non_mig_survived_pop.append(temp)
 
-        #'''
         temp_2 = non_mig_survived_pop[(non_mig_survived_pop['age'] >= 101)]
-        temp_2 = pd.DataFrame(temp_2[['persons', 'households']].groupby([temp_2['race_ethn'], temp_2['sex'], temp_2['type'], temp_2['mildep']]).sum())
-        temp_2['age'] = 101
-        temp_2 = temp_2.reset_index(drop=False)
+        temp_2_p = pd.DataFrame(temp_2['non_mig_survived_pop'].groupby([temp_2['race_ethn'], temp_2['sex'], temp_2['type'], temp_2['mildep']]).sum())
+        temp_2_h = pd.DataFrame(temp_2['households'].groupby([temp_2['race_ethn'], temp_2['sex'], temp_2['type'], temp_2['mildep']]).sum())
+        temp_2_p = temp_2_p.join(temp_2_h)
+        temp_2_p['age'] = 101
+        temp_2_p = temp_2_p.reset_index(drop=False)
 
-        non_mig_survived_pop = non_mig_survived_pop.append(temp_2)
-        non_mig_survived_pop = non_mig_survived_pop[non_mig_survived_pop.age < 102]
-        #'''
+        non_mig_survived_pop = non_mig_survived_pop[['age', 'race_ethn', 'sex', 'type', 'mildep', 'non_mig_survived_pop', 'households']]
+        non_mig_survived_pop = non_mig_survived_pop[non_mig_survived_pop.age < 101]
+        non_mig_survived_pop = non_mig_survived_pop.append(temp_2_p)
+        non_mig_survived_pop.fillna(0)
 
         non_mig_survived_pop = non_mig_survived_pop.set_index(['age', 'race_ethn', 'sex'])
-
         non_mig_survived_pop.to_hdf('temp/data.h5', 'aged_pop', format='table', mode='a')
 
 
@@ -344,6 +349,8 @@ class FinalPopulation(luigi.Task):
         new_pop = pd.read_hdf('temp/data.h5', 'new_pop')
 
         pop = aged_pop.join(new_pop)
+        pop = pop.fillna(0)
+
         pop.loc[pop['type'].isin(['COL', 'INS', 'MIL', 'OTH']), ['new_pop']] = 0
         pop.loc[pop['mildep'].isin(['Y']), ['new_pop']] = 0
         pop['persons'] = pop['non_mig_survived_pop'] + pop['new_pop']
