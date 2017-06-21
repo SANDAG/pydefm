@@ -18,7 +18,6 @@ from pysandag import database
 
 
 class IncPopulation(luigi.Task):
-    year = luigi.Parameter()
 
     def requires(self):
         return None
@@ -68,11 +67,10 @@ class IncPopulation(luigi.Task):
             pop.to_hdf('temp/data.h5', 'pop', mode='a')
 
 
-class IncomeTypeRates(luigi.Task):
-    year = luigi.Parameter()
+class IncomeByType(luigi.Task):
 
     def requires(self):
-        return IncPopulation(self.year)
+        return IncPopulation()
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -111,92 +109,7 @@ class IncomeTypeRates(luigi.Task):
         inc_type_rates.to_sql(name='non_wage_income', con=engine, schema='defm', if_exists='append', index=True)
 
 
-class AvgIncomeType(luigi.Task):
-    year = luigi.Parameter()
-
-    def requires(self):
-        return None
-
-    def output(self):
-        return luigi.LocalTarget('temp/data.h5')
-
-    def run(self):
-        # avg_inc_type = extract.create_df('', '')
-        # avg_inc_type.to_hdf('temp/data.h5', 'avg_inc_type', mode='a')
-        print 'AvgIncomeType'
-
-
-class NonSelfEmployedPop(luigi.Task):
-    year = luigi.Parameter()
-
-    def requires(self):
-        return {'pop': IncPopulation(self.year),
-                'inc_type_rates': IncomeTypeRates(self.year)}
-
-    def output(self):
-        return luigi.LocalTarget('temp/data.h5')
-
-    def run(self):
-
-        pop = pd.read_hdf('temp/data.h5', 'pop')
-        # inc_type_rates = pd.read_hdf('temp/data.h5', 'inc_type_rates')
-        # pop = pop.join(inc_type_rates)
-        print 'NonSelfEmployedPop'
-
-
-class NonSelfEmployedIncome(luigi.Task):
-    year = luigi.Parameter()
-
-    def requires(self):
-        return {'non_self_employed_pop': NonSelfEmployedPop(self.year),
-                'avg_income_type': AvgIncomeType(self.year)}
-
-    def output(self):
-        return luigi.LocalTarget('temp/data.h5')
-
-    def run(self):
-        print 'NonSelfEmployedIncome'
-
-
-class SelfEmployedIncome(luigi.Task):
-    year = luigi.Parameter()
-
-    def requires(self):
-        return NonSelfEmployedPop(self.year)
-
-    def output(self):
-        return luigi.LocalTarget('temp/data.h5')
-
-    def run(self):
-        print 'SelfEmployedIncome'
-
-
-class TotalIncome(luigi.Task):
-    year = luigi.Parameter()
-
-    def requires(self):
-        return {'non_self_employed_inc': NonSelfEmployedIncome(self.year),
-                'self_employed_inc': SelfEmployedIncome(self.year)}
-
-    def output(self):
-        return luigi.LocalTarget('temp/data.h5')
-
-    def run(self):
-        print 'TotalIncome'
-
-
-class IncIter(luigi.contrib.hadoop.JobTask):
-
-    def requires(self):
-        return [TotalIncome(y) for y in range(2011, 2012)]
-
-    def output(self):
-        return luigi.LocalTarget('temp/data.h5')
-
-    def run(self):
-        print 'complete'
-
 if __name__ == '__main__':
     shutil.rmtree('temp')
     os.makedirs('temp')
-    luigi.run(main_task_cls=IncIter)
+    luigi.run(main_task_cls=IncomeByType)
