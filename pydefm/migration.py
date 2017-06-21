@@ -1,3 +1,5 @@
+import numpy as np
+import pandas as pd
 
 
 def migrating_pop(population, migration_rates):
