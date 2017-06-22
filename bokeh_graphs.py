@@ -5,7 +5,7 @@ from pysandag.database import get_connection_string
 import pandas as pd
 import numpy as np
 from bokeh.io import curdoc, gridplot
-from bokeh.layouts import row, widgetbox
+from bokeh.layouts import row, widgetbox, column
 from bokeh.models import ColumnDataSource, LabelSet, Plot, DataRange1d, LinearAxis, Grid, LassoSelectTool, WheelZoomTool, SaveTool, ResetTool
 from bokeh.models.widgets import Slider, TextInput
 from bokeh.plotting import figure, output_file, show
@@ -13,7 +13,7 @@ from bokeh.charts import Bar, output_file, show
 from bokeh.models.glyphs import HBar
 from bokeh.models import (
     ColumnDataSource, HoverTool, SingleIntervalTicker, Slider, Button, Label,
-    CategoricalColorMapper,
+    CategoricalColorMapper, ranges
 )
 
 defm_engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
@@ -28,7 +28,7 @@ results_sql = '''SELECT "Population" as pop_py
                         ,mig_in - mig_out as net_mig_py
                         ,new_born as births_py
                 FROM defm.population_summary
-                WHERE "Run_id" = 14;'''
+                WHERE "Run_id" = 23;'''
 
 results_df = pd.read_sql(results_sql, defm_engine, index_col='Year')
 
@@ -40,7 +40,7 @@ results_inc_sql = '''SELECT  yr as "Year",
                              "Supplemental_Social_Security" as supplemental_social_security_py,
                              "Social_Security" as social_security_py
                          FROM defm.non_wage_income
-                         WHERE run_id = 2;'''
+                         WHERE run_id = 3;'''
 
 results_inc_df = pd.read_sql(results_inc_sql, defm_engine, index_col='Year')
 
@@ -88,13 +88,15 @@ sas_inc_df = pd.read_sql(sas_inc_sql, sql_in_engine, index_col='Year')
 
 pop_sql = '''SELECT age, race_ethn, sex, type, mildep, persons, households, yr
                 FROM defm.population
-                WHERE run_id = 14 and age < 102
+                WHERE run_id = 23 and age < 102
                 '''
 pop_df = pd.read_sql(pop_sql, defm_engine, index_col=None)
 
+min_year = pop_df['yr'].min()
+
+# sum by age
 pop_sum_df = pd.DataFrame(pop_df['persons'].groupby([pop_df['yr'], pop_df['age'],  pop_df['sex']]).sum())
 pop_sum_df.rename(columns={'persons': 'persons_by_age'}, inplace=True)
-
 
 yr_sum_df = pd.DataFrame(pop_df['persons'].groupby([pop_df['yr']]).sum())
 pop_sum_df = pop_sum_df.reset_index(drop=False)
@@ -106,11 +108,21 @@ pop_sum_df = pop_sum_df.join(yr_sum_df)
 
 pop_sum_df['ratio'] = pop_sum_df['persons_by_age'] / pop_sum_df['persons']
 
-pop_sum_df = pop_sum_df.reset_index(drop=False)
-pop_sum_df = pop_sum_df.set_index(['yr'])
 
 pop_sum_df_m = pop_sum_df.loc[pop_sum_df['sex'] == 'M']
 pop_sum_df_f = pop_sum_df.loc[pop_sum_df['sex'] == 'F']
+
+# sum by race
+
+pop_sum_race_df = pd.DataFrame(pop_df['persons'].groupby([pop_df['yr'], pop_df['race_ethn']]).sum())
+pop_sum_race_df.rename(columns={'persons': 'persons_by_race'}, inplace=True)
+pop_sum_race_df = pop_sum_race_df.reset_index(drop=False)
+pop_sum_race_df = pop_sum_race_df.set_index(['yr'])
+
+pop_sum_race_df = pop_sum_race_df.join(yr_sum_df)
+
+pop_sum_race_df['ratio'] = pop_sum_race_df['persons_by_race'] / pop_sum_race_df['persons']
+
 
 # pop_sum_df_m['age'] = ((pop_sum_df_m['age'] * 2 + 1)/2)
 # pop_sum_df_f['age'] = (pop_sum_df_f['age'] * 2)
@@ -191,19 +203,25 @@ plot6.legend.background_fill_alpha = 0.5
 pop_sum_df_m['ratio'] = (pop_sum_df_m['ratio'] * -1)
 
 # Bokeh time series graphs
-y_m = pop_sum_df_m['age'].loc[2011].tolist()
-right_m = pop_sum_df_m['ratio'].loc[2011].tolist()
+y_m = pop_sum_df_m['age'].loc[min_year].tolist()
+right_m = pop_sum_df_m['ratio'].loc[min_year].tolist()
 
-y_f = pop_sum_df_f['age'].loc[2011].tolist()
-right_f = pop_sum_df_f['ratio'].loc[2011].tolist()
+y_f = pop_sum_df_f['age'].loc[min_year].tolist()
+right_f = pop_sum_df_f['ratio'].loc[min_year].tolist()
 
+x = pop_sum_race_df['race_ethn'].loc[min_year].tolist()
+y = pop_sum_race_df['ratio'].loc[min_year].tolist()
+
+print pop_sum_race_df
 source = ColumnDataSource(data=dict(y_m=y_m, right_m=right_m, y_f=y_f, right_f=right_f))
+
+source2 = ColumnDataSource(data=dict(x=x, y=y))
 
 
 # Set up plot
 plot = figure(plot_height=1200, plot_width=2400, title="Population",
                 tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label = "Age",
-                     x_axis_label = "Percentage of the total population")
+                     x_axis_label = "Percentage of the total population", x_range=ranges.Range1d(start=-.01, end=.01))
 
 glyph1 = HBar(y="y_m", right="right_m", left=0, height=0.5, fill_color="blue", name="Male")
 plot.add_glyph(source, glyph1)
@@ -212,15 +230,28 @@ glyph2 = HBar(y="y_f", right="right_f", left=0, height=0.5, fill_color="orange",
 plot.add_glyph(source, glyph2)
 
 plot.xaxis.bounds = (-.01, .01)
-plot.add_tools(HoverTool(tooltips="@index", show_arrow=False, point_policy='follow_mouse'))
 
-show(plot6)
+plot7 = figure(plot_height=1200, plot_width=2400, title="Population",
+                tools="crosshair,pan,reset,save,wheel_zoom",
+        x_axis_label = "race",
+        y_axis_label = "percentage",
+        x_minor_ticks=2,
+        x_range = source2.data["x"],
+        y_range= ranges.Range1d(start=0, end=.6))
+
+
+labels = LabelSet(x='x', y='y', text='y', level='glyph',
+        x_offset=-13.5, y_offset=0, source=source2, render_mode='canvas')
+
+plot7.vbar(source=source2, x='x', top='y', bottom=0, width=0.3, color="blue")
+plot7.add_layout(labels)
+show(plot7)
 # Set up widgets
 
 
 text = TextInput(title="Graph", value='Population over time')
 
-Year = Slider(title="Year", value=2011, start=2011, end=2050, step=1)
+Year = Slider(title="Year", value=min_year, start=min_year, end=2050, step=1)
 
 
 # Set up callbacks
@@ -241,7 +272,11 @@ def update_plot(attrname, old, new):
     y_f = pop_sum_df_f['age'].loc[yr].tolist()
     right_f = pop_sum_df_f['ratio'].loc[yr].tolist()
 
+    x = pop_sum_race_df['race_ethn'].loc[yr].tolist()
+    y = pop_sum_race_df['ratio'].loc[yr].tolist()
+
     source.data = dict(y_m=y_m, right_m=right_m, y_f=y_f, right_f=right_f)
+    source2.data = dict(x=x, y=y)
 
 
 for w in [Year]:
@@ -251,7 +286,7 @@ for w in [Year]:
 # Set up layouts and add to document
 inputs = widgetbox(text, Year)
 
-curdoc().add_root(row(inputs, plot, width=4000))
+curdoc().add_root(column(plot, inputs, plot7, width=4000))
 curdoc().add_root(row(plot2, width=800))
 curdoc().add_root(row(plot3, width=800))
 curdoc().add_root(row(plot4, width=800))
