@@ -15,6 +15,8 @@ from bokeh.models import (
     ColumnDataSource, HoverTool, SingleIntervalTicker, Slider, Button, Label,
     CategoricalColorMapper, ranges
 )
+from bokeh.layouts import layout
+
 
 defm_engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
 
@@ -133,7 +135,7 @@ df = df.join(sas_df)
 
 df2 = sas_inc_df.join(results_inc_df)
 
-plot2 = figure(plot_height=800, plot_width=800, title="Main difference: applying survival rates to new born",
+plot2 = figure(plot_height=800, plot_width=1400, title="Main difference: applying survival rates to new born",
               tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label = "Population",
                  x_axis_label = "Year")
 
@@ -143,7 +145,7 @@ plot2.line(df.index.tolist(), df['pop_dof'], line_width=2, legend="Population DO
 
 
 # DEATHS
-plot3 = figure(plot_height=800, plot_width=800, title="Main difference: not allowing GQ to die",
+plot3 = figure(plot_height=800, plot_width=1400, title="Main difference: not allowing GQ to die",
               tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label="Deaths",
                x_axis_label="Year")
 
@@ -153,7 +155,7 @@ plot3.line(df.index.tolist(), df['deaths_dof'], line_width=2, legend="Deaths DOF
 
 
 # Births
-plot4 = figure(plot_height=800, plot_width=800, title="Main difference: not allowing GQ to have new borns",
+plot4 = figure(plot_height=800, plot_width=1400, title="Main difference: not allowing GQ to have new borns",
               tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label="Births",
                  x_axis_label="Year")
 
@@ -164,7 +166,7 @@ plot4.line(df.index.tolist(), df['births_dof'], line_width=2, legend="Births DOF
 
 # Net Migration
 
-plot5 = figure(plot_height=800, plot_width=800, title="~ Equal",
+plot5 = figure(plot_height=800, plot_width=1400, title="~ Equal",
               tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label="Net Migration",
                  x_axis_label="Year")
 
@@ -175,7 +177,7 @@ plot5.line(df.index.tolist(), df['net_mig_dof'], line_width=2, legend="Net Migra
 
 # Income results
 
-plot6 = figure(plot_height=800, plot_width=800, title="Income Model",
+plot6 = figure(plot_height=800, plot_width=1400, title="Income Model",
               tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label="Dollars ($)",
                  x_axis_label="Year")
 
@@ -209,6 +211,7 @@ right_m = pop_sum_df_m['ratio'].loc[min_year].tolist()
 y_f = pop_sum_df_f['age'].loc[min_year].tolist()
 right_f = pop_sum_df_f['ratio'].loc[min_year].tolist()
 
+pop_sum_race_df = pop_sum_race_df.round(2)
 x = pop_sum_race_df['race_ethn'].loc[min_year].tolist()
 y = pop_sum_race_df['ratio'].loc[min_year].tolist()
 
@@ -219,9 +222,10 @@ source2 = ColumnDataSource(data=dict(x=x, y=y))
 
 
 # Set up plot
-plot = figure(plot_height=1200, plot_width=2400, title="Population",
+plot = figure(plot_height=400, plot_width=800, title="Population",
                 tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label = "Age",
-                     x_axis_label = "Percentage of the total population", x_range=ranges.Range1d(start=-.01, end=.01))
+                     x_axis_label = "Percentage of the total population", x_range=ranges.Range1d(start=-.01, end=.01),
+              y_range=ranges.Range1d(start=-1, end=102))
 
 glyph1 = HBar(y="y_m", right="right_m", left=0, height=0.5, fill_color="blue", name="Male")
 plot.add_glyph(source, glyph1)
@@ -231,7 +235,7 @@ plot.add_glyph(source, glyph2)
 
 plot.xaxis.bounds = (-.01, .01)
 
-plot7 = figure(plot_height=1200, plot_width=2400, title="Population",
+plot7 = figure(plot_height=400, plot_width=800, title="Population distribution by race",
                 tools="crosshair,pan,reset,save,wheel_zoom",
         x_axis_label = "race",
         y_axis_label = "percentage",
@@ -245,20 +249,15 @@ labels = LabelSet(x='x', y='y', text='y', level='glyph',
 
 plot7.vbar(source=source2, x='x', top='y', bottom=0, width=0.3, color="blue")
 plot7.add_layout(labels)
-show(plot7)
+show(plot)
 # Set up widgets
 
 
-text = TextInput(title="Graph", value='Population over time')
-
-Year = Slider(title="Year", value=min_year, start=min_year, end=2050, step=1)
-
-
-# Set up callbacks
-def update_title(attrname, old, new):
-    plot.title.text = text.value
-
-text.on_change('value', update_title)
+def animate_update():
+    year = Year.value + 1
+    if year > 2049:
+        year = min_year
+    Year.value = year
 
 
 def update_plot(attrname, old, new):
@@ -278,15 +277,40 @@ def update_plot(attrname, old, new):
     source.data = dict(y_m=y_m, right_m=right_m, y_f=y_f, right_f=right_f)
     source2.data = dict(x=x, y=y)
 
+Year = Slider(title="Year", value=min_year, start=min_year, end=2050, step=1)
 
+Year.on_change('value', update_plot)
+
+
+def animate():
+    if button.label == '► Play':
+        button.label = '❚❚ Pause'
+        curdoc().add_periodic_callback(animate_update, 300)
+    else:
+        button.label = '► Play'
+        curdoc().remove_periodic_callback(animate_update)
+
+button = Button(label='► Play', width=60)
+button.on_click(animate)
+
+layout = layout([
+    [plot],
+    [Year, button],
+    [plot7]
+], sizing_mode='scale_width')
+
+curdoc().add_root(layout)
+'''
 for w in [Year]:
     w.on_change('value', update_plot)
 
 
 # Set up layouts and add to document
-inputs = widgetbox(text, Year)
+inputs = widgetbox(Year)
 
 curdoc().add_root(column(plot, inputs, plot7, width=4000))
+'''
+
 curdoc().add_root(row(plot2, width=800))
 curdoc().add_root(row(plot3, width=800))
 curdoc().add_root(row(plot4, width=800))
