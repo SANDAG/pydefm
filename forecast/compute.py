@@ -116,7 +116,7 @@ def non_mig(nm_df, db_id, sim_year):
     return nm_df
 
 
-def births_all(b_df, db_id, sim_year, pop_col='persons'):
+def births_all(b_df, sim_year, pop_col='persons'):
     """
     Calculate births for given year based on rates.
     Predict male births as 51% of all births & female births as 49%.
@@ -191,7 +191,7 @@ def births_all(b_df, db_id, sim_year, pop_col='persons'):
     return b_df_notnull
 
 
-def births_sum(df,db_id,sim_year):
+def births_sum(df, sim_year):
     """
     Sum births over all the ages in a given cohort
     Set birth age to zero and reset DataFrame index
@@ -294,7 +294,7 @@ def deaths(df, db_id, sim_year):
     deaths_grouped = deaths_out.groupby(['yr', 'race_ethn', 'mildep', 'sex',
                               'type'], as_index=False).sum()
 
-    log.insert_run('defm.db', db_id, deaths_grouped, 'deaths_sum_by_age')
+    # log.insert_run('defm.db', db_id, deaths_grouped, 'deaths_sum_by_age')
 
     # log.insert_run('defm.db', db_id, df, 'deaths')
 
