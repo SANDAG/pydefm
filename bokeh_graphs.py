@@ -30,7 +30,7 @@ results_sql = '''SELECT "Population" as pop_py
                         ,mig_in - mig_out as net_mig_py
                         ,new_born as births_py
                 FROM defm.population_summary
-                WHERE "Run_id" = 23;'''
+                WHERE "Run_id" = 52;'''
 
 results_df = pd.read_sql(results_sql, defm_engine, index_col='Year')
 
@@ -90,7 +90,7 @@ sas_inc_df = pd.read_sql(sas_inc_sql, sql_in_engine, index_col='Year')
 
 pop_sql = '''SELECT age, race_ethn, sex, type, mildep, persons, households, yr
                 FROM defm.population
-                WHERE run_id = 23 and age < 102
+                WHERE run_id = 52 and age < 102
                 '''
 pop_df = pd.read_sql(pop_sql, defm_engine, index_col=None)
 
@@ -215,7 +215,6 @@ pop_sum_race_df = pop_sum_race_df.round(2)
 x = pop_sum_race_df['race_ethn'].loc[min_year].tolist()
 y = pop_sum_race_df['ratio'].loc[min_year].tolist()
 
-print pop_sum_race_df
 source = ColumnDataSource(data=dict(y_m=y_m, right_m=right_m, y_f=y_f, right_f=right_f))
 
 source2 = ColumnDataSource(data=dict(x=x, y=y))
@@ -296,7 +295,12 @@ button.on_click(animate)
 layout = layout([
     [plot],
     [Year, button],
-    [plot7]
+    [plot7],
+    [plot2],
+    [plot3],
+    [plot4],
+    [plot5],
+    [plot6],
 ], sizing_mode='scale_width')
 
 curdoc().add_root(layout)
@@ -309,13 +313,13 @@ for w in [Year]:
 inputs = widgetbox(Year)
 
 curdoc().add_root(column(plot, inputs, plot7, width=4000))
-'''
+
 
 curdoc().add_root(row(plot2, width=800))
 curdoc().add_root(row(plot3, width=800))
 curdoc().add_root(row(plot4, width=800))
 curdoc().add_root(row(plot5, width=800))
 curdoc().add_root(row(plot6, width=800))
-
+'''
 curdoc().title = "Sliders"
 

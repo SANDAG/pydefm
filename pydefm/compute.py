@@ -93,6 +93,14 @@ def new_population(new_pop):
 
 
 def final_population(pop):
-    pop['persons'] = pop['non_mig_survived_pop'] + pop['new_pop']
+    pop['persons1'] = pop['non_mig_survived_pop'] + pop['new_pop']
 
+    pop2 = pop[(pop['type'] == 'HHP')]
+    pop2 = pop2.reset_index(drop=False)
+
+    pop2 = pd.DataFrame(pop2['persons1'].groupby([pop2['age'], pop2['race_ethn'], pop2['sex']]).sum())
+    pop2.rename(columns={'persons1': 'persons_sum1'}, inplace=True)
+    pop = pop.join(pop2)
+
+    pop['persons'] = np.where(pop['type'].isin(['INS', 'OTH']), (pop['persons_sum1'] * pop['rates']).round(), pop['persons1'])
     return pop[['type', 'mildep', 'persons', 'households']]

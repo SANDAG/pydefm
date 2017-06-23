@@ -12,6 +12,7 @@ from pathlib import Path
 from sqlalchemy import create_engine
 from pysandag.database import get_connection_string
 import pydefm.compute as cp
+import numpy as np
 
 
 class Population(luigi.Task):
@@ -34,6 +35,18 @@ class Population(luigi.Task):
             run_id.to_hdf('temp/data.h5', 'run_id',  mode='a')
             pop = extract.create_df('population', 'population_table')
             pop.to_hdf('temp/data.h5', 'pop', format='table', mode='a')
+
+            pop2 = pop[(pop['type'] == 'HHP')]
+            pop2 = pop2.reset_index(drop=False)
+
+            pop2 = pd.DataFrame(pop2['persons'].groupby([pop2['age'], pop2['race_ethn'], pop2['sex']]).sum())
+            pop2.rename(columns={'persons': 'persons_sum'}, inplace=True)
+
+            pop2 = pop.join(pop2)
+            pop2['rates'] = np.where(pop2['type'].isin(['INS', 'OTH']), (pop2['persons'] / pop2['persons_sum']), 0)
+
+            rates = pop2[['mildep', 'type', 'rates']]
+            rates.to_hdf('temp/data.h5', 'ins_oth_rates', format='table', mode='a')
 
             engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
             population_summary = []
@@ -318,12 +331,24 @@ class FinalPopulation(luigi.Task):
     def run(self):
         aged_pop = pd.read_hdf('temp/data.h5', 'aged_pop')
         new_pop = pd.read_hdf('temp/data.h5', 'new_pop')
+        rates = pd.read_hdf('temp/data.h5', 'ins_oth_rates')
 
         pop = aged_pop.join(new_pop)
         pop = pop.fillna(0)
 
         pop.loc[pop['type'].isin(['COL', 'INS', 'MIL', 'OTH']), ['new_pop']] = 0
         pop.loc[pop['mildep'].isin(['Y']), ['new_pop']] = 0
+
+        pop = pop.reset_index(drop=False)
+
+        rates = rates.reset_index(drop=False)
+
+        pop = pop.set_index(['age', 'race_ethn', 'sex', 'mildep', 'type'])
+        rates = rates.set_index(['age', 'race_ethn', 'sex', 'mildep', 'type'])
+
+        pop = pop.join(rates)
+        pop = pop.reset_index(drop=False)
+        pop = pop.set_index(['age', 'race_ethn', 'sex'])
 
         pop = cp.final_population(pop)
         pop.to_hdf('temp/data.h5', 'pop', format='table', mode='a')
