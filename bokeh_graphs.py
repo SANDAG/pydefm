@@ -30,7 +30,7 @@ results_sql = '''SELECT "Population" as pop_py
                         ,mig_in - mig_out as net_mig_py
                         ,new_born as births_py
                 FROM defm.population_summary
-                WHERE "Run_id" = 52;'''
+                WHERE "Run_id" = 55;'''
 
 results_df = pd.read_sql(results_sql, defm_engine, index_col='Year')
 
@@ -90,7 +90,7 @@ sas_inc_df = pd.read_sql(sas_inc_sql, sql_in_engine, index_col='Year')
 
 pop_sql = '''SELECT age, race_ethn, sex, type, mildep, persons, households, yr
                 FROM defm.population
-                WHERE run_id = 52 and age < 102
+                WHERE run_id = 55 and age < 102
                 '''
 pop_df = pd.read_sql(pop_sql, defm_engine, index_col=None)
 

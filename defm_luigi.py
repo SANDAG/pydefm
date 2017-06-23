@@ -261,7 +261,7 @@ class NewBornPopulation(luigi.Task):
 
         newborn = newborn.join(death_rates)
         newborn['new_deaths'] = (newborn['new_born'] * newborn['death_rate']).round()
-        # newborn['new_born'] = (newborn['new_born'] - newborn['new_deaths']).round()
+        newborn['new_born_survived'] = (newborn['new_born'] - newborn['new_deaths']).round()
 
         dead_pop = pd.read_hdf('temp/data.h5', 'dead_pop')
         dead_pop = dead_pop.join(newborn['new_deaths'])

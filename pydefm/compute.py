@@ -45,7 +45,7 @@ def dead_population(pop):
 
 '''
 def new_born_population(pop):
-    pop['deaths'] = (pop['non_mig_pop'] * pop['death_rate']).round()
+    pop['new_born'] = (pop['non_mig_pop'] * pop['death_rate']).round()
     return pop[['deaths']]
 '''
 
@@ -88,7 +88,7 @@ def aged_pop(non_mig_survived_pop):
 
 
 def new_population(new_pop):
-    new_pop['new_pop'] = new_pop['mig_Din'] + new_pop['mig_Fin'] + new_pop['new_born']
+    new_pop['new_pop'] = new_pop['mig_Din'] + new_pop['mig_Fin'] + new_pop['new_born_survived']
     return new_pop[['new_pop']]
 
 
