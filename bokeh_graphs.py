@@ -16,7 +16,9 @@ from bokeh.models import (
     CategoricalColorMapper, ranges
 )
 from bokeh.layouts import layout
+from forecast import util
 
+sim_versions = util.yaml_to_dict('model_config.yml', 'simulation_versions')
 
 defm_engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
 
@@ -30,7 +32,7 @@ results_sql = '''SELECT "Population" as pop_py
                         ,mig_in - mig_out as net_mig_py
                         ,new_born as births_py
                 FROM defm.population_summary
-                WHERE "Run_id" = 55;'''
+                WHERE "Run_id" =''' + str(sim_versions['dem'])
 
 results_df = pd.read_sql(results_sql, defm_engine, index_col='Year')
 
@@ -42,7 +44,7 @@ results_inc_sql = '''SELECT  yr as "Year",
                              "Supplemental_Social_Security" as supplemental_social_security_py,
                              "Social_Security" as social_security_py
                          FROM defm.non_wage_income
-                         WHERE run_id = 3;'''
+                         WHERE run_id = ''' + str(sim_versions['inc'])
 
 results_inc_df = pd.read_sql(results_inc_sql, defm_engine, index_col='Year')
 
@@ -66,7 +68,7 @@ sas_sql = '''SELECT [yr] as Year
             ,b_nonmil as births_sas_1005
             ,mig_net as net_mig_sas_1005
             FROM [isam].[demographic_output].[summary]
-            WHERE sim_id = 1005
+            WHERE sim_id = 1006
             '''
 
 sas_df = pd.read_sql(sas_sql, sql_in_engine, index_col='Year')
@@ -90,8 +92,8 @@ sas_inc_df = pd.read_sql(sas_inc_sql, sql_in_engine, index_col='Year')
 
 pop_sql = '''SELECT age, race_ethn, sex, type, mildep, persons, households, yr
                 FROM defm.population
-                WHERE run_id = 55 and age < 102
-                '''
+                WHERE run_id =
+                ''' + str(sim_versions['dem'])
 pop_df = pd.read_sql(pop_sql, defm_engine, index_col=None)
 
 min_year = pop_df['yr'].min()

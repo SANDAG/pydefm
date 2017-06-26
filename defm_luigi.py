@@ -13,6 +13,7 @@ from sqlalchemy import create_engine
 from pysandag.database import get_connection_string
 import pydefm.compute as cp
 import numpy as np
+from forecast import util
 
 
 class Population(luigi.Task):
@@ -403,7 +404,8 @@ class ExportTables(luigi.Task):
 class Iter(luigi.contrib.hadoop.JobTask):
 
     def requires(self):
-        return [ExportTables(y) for y in range(2011, 2051)]
+        years = util.yaml_to_dict('model_config.yml', 'years')
+        return [ExportTables(y) for y in range(years['y1'], years['y2'] + 1)]
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
