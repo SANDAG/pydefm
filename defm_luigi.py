@@ -405,7 +405,7 @@ class Iter(luigi.contrib.hadoop.JobTask):
 
     def requires(self):
         years = util.yaml_to_dict('model_config.yml', 'years')
-        return [ExportTables(y) for y in range(years['y1'], years['y2'] + 1)]
+        return [ExportTables(y) for y in range(years['y1'], years['yf'] + 1)]
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')

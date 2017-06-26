@@ -114,3 +114,30 @@ SELECT yr
 FROM %s
 WHERE income_id = %s
 """
+
+lfp_rates = """
+SELECT [yr]
+      ,[age_cat]
+      ,[sex]
+      ,[race] as race_ethn
+      ,[lfpr]
+  FROM %s
+  WHERE lfpr_id = %s
+"""
+
+cohort_ur = """
+SELECT [yr]
+      ,[age_cat]
+      ,[sex]
+      ,[race] as race_ethn
+      ,[ur2]
+  FROM %s
+  WHERE [ur2_id] = %s
+  """
+
+yearly_ur = """
+SELECT [yr]
+      ,[ur1]
+  FROM %s
+  WHERE ur1_id = %s
+  """
