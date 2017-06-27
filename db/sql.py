@@ -141,3 +141,10 @@ SELECT [yr]
   FROM %s
   WHERE ur1_id = %s
   """
+
+out_commuting = '''
+SELECT [yr]
+      ,[wtlh_lh]
+  FROM %s
+  WHERE out_commuting_id = %s
+  '''

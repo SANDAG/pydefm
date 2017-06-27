@@ -106,6 +106,10 @@ class LaborForce(luigi.Task):
         lfpr = pd.read_hdf('temp/data.h5', 'lfpr')
         labor_force = pop.join(lfpr)
         labor_force['labor_force'] = (labor_force['persons'] * labor_force['lfpr']).round()
+
+        labor_force2 = labor_force.reset_index(drop=False)
+
+        print pd.DataFrame(labor_force2[['persons', 'labor_force']].groupby([labor_force2['yr']]).sum())
         labor_force = labor_force.iloc[~labor_force.index.get_level_values('age_cat').isin(['00_04', '05_09', '10_14'])]
         labor_force.to_hdf('temp/data.h5', 'labor_force', mode='a')
 
@@ -151,7 +155,7 @@ class WorkForce(luigi.Task):
 
         work_force = work_force.join(computed_ur['adjustment'])
         work_force['unemployed'] = (work_force['unemployed'] * work_force['adjustment']).round()
-        work_force['employed'] = (work_force['labor_force'] - work_force['unemployed'])
+        work_force['work_force'] = (work_force['labor_force'] - work_force['unemployed'])
         work_force.to_hdf('temp/data.h5', 'work_force', mode='a')
 
         # Code to check if after adjustment ur matches target
@@ -161,9 +165,53 @@ class WorkForce(luigi.Task):
         computed_ur = pd.DataFrame(computed_ur[['labor_force', 'unemployed']].groupby([computed_ur['yr']]).sum())
         computed_ur['computed_ur'] = (computed_ur['unemployed'] / computed_ur['labor_force'])
         print computed_ur
-        '''    
+        '''
+
+
+class LocalWorkForce(luigi.Task):
+
+    def requires(self):
+        return WorkForce()
+
+    def output(self):
+        return luigi.LocalTarget('temp/data.h5')
+
+    def run(self):
+        out_commuting = extract.create_df('out_commuting', 'out_commuting_table', index=['yr'])
+        work_force = pd.read_hdf('temp/data.h5', 'work_force')
+        work_force = work_force.reset_index(drop=False)
+        work_force = pd.DataFrame(work_force[['labor_force', 'unemployed', 'work_force']].groupby([work_force['yr']]).sum())
+        work_force = work_force.join(out_commuting)
+        work_force['work_force_outside'] = (work_force['work_force'] * work_force['wtlh_lh']).round()
+        work_force['work_force_local'] = (work_force['work_force'] - work_force['work_force_outside']).round()
+        work_force.to_hdf('temp/data.h5', 'local_work_force', mode='a')
+
+
+class Jobs(luigi.Task):
+
+    def requires(self):
+        return WorkForce()
+
+    def output(self):
+        return luigi.LocalTarget('temp/data.h5')
+
+    def run(self):
+        #in_commuting = extract.create_df('in_commuting', 'in_commuting_table', index=['yr'])
+
+        '''
+        work_force = pd.read_hdf('temp/data.h5', 'work_force')
+        work_force = work_force.reset_index(drop=False)
+        work_force = pd.DataFrame(work_force[['labor_force', 'unemployed', 'work_force']].groupby([work_force['yr']]).sum())
+        work_force = work_force.join(out_commuting)
+        work_force['work_force_outside'] = (work_force['work_force'] * work_force['wtlh_lh']).round()
+        work_force['work_force_local'] = (work_force['work_force'] - work_force['work_force_outside']).round()
+        work_force.to_hdf('temp/data.h5', 'local_work_force', mode='a')
+        '''
 
 if __name__ == '__main__':
-    shutil.rmtree('temp')
     os.makedirs('temp')
-    luigi.run(main_task_cls=WorkForce)
+    luigi.run(main_task_cls=LocalWorkForce)
+    shutil.rmtree('temp')
+
+    #os.system("bokeh serve bokeh_graphs.py")
+
