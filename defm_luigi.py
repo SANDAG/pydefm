@@ -253,7 +253,10 @@ class NewBornPopulation(luigi.Task):
         pop = pop[(pop['type'] == 'HHP') & (pop['mildep'] == 'N')]
         birth_rates = compute.rates_for_yr(pop, birth_rates, self.year)
         birth_rates = birth_rates[(birth_rates['yr'] == self.year)]
-        births_per_cohort = compute.births_all(birth_rates, self.year, pop_col='non_mig_pop')
+        random_numbers = extract.create_df('random_numbers', 'random_numbers_table')
+        random_numbers = random_numbers[(random_numbers['yr'] == self.year)]
+        random_numbers = random_numbers[['random_number']]
+        births_per_cohort = compute.births_all(birth_rates, self.year, pop_col='non_mig_pop', rand_df=random_numbers)
 
         death_rates = pd.read_hdf('temp/data.h5', 'death_rates')
         death_rates = death_rates[(death_rates['yr'] == self.year)]
@@ -416,6 +419,6 @@ class Iter(luigi.contrib.hadoop.JobTask):
 
 if __name__ == '__main__':
 
-    shutil.rmtree('temp')
     os.makedirs('temp')
     luigi.run(main_task_cls=Iter)
+    shutil.rmtree('temp')

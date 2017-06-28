@@ -81,6 +81,16 @@ WHERE   rate_type = 'OTH' AND
         rate_version = %s
 """
 
+random_numbers = """
+SELECT [yr]
+      ,[age]
+      ,[race] as race_ethn
+      ,[sex]
+      ,[random_number]
+  FROM %s
+  WHERE 1 = %s
+  """
+
 inc_pop = """
 SELECT  age,
         race_ethn,

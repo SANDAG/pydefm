@@ -32,7 +32,7 @@ def create_df(data_type, db_table, pivot=False, index=['age', 'race_ethn', 'sex'
 
     # build query from sql.py
     # use database table name and rate versions from .yml file
-    in_query = getattr(sql,data_type) % (tables[db_table],rate_versions[data_type])
+    in_query = getattr(sql,data_type) % (tables[db_table], rate_versions[data_type])
 
     # pandas DataFrame from query
     df_sql_result = pd.read_sql(in_query, sql_in_engine)

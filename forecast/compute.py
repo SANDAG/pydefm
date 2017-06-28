@@ -112,11 +112,10 @@ def non_mig(nm_df, db_id, sim_year):
     # drop year column in order to join w birth and death rates
     nm_df = nm_df.drop(['yr','persons','mig_out_net'],1)
 
-
     return nm_df
 
 
-def births_all(b_df, sim_year, pop_col='persons'):
+def births_all(b_df, sim_year, rand_df=None, pop_col='persons'):
     """
     Calculate births for given year based on rates.
     Predict male births as 51% of all births & female births as 49%.
@@ -130,6 +129,8 @@ def births_all(b_df, sim_year, pop_col='persons'):
         primary key for current simulation
     sim_year : int
         year being simulated
+    rand_df : pandas.DataFrame
+        with random numbers
     pop_col : string
         column name from which births to be calculated
     Returns
@@ -155,13 +156,14 @@ def births_all(b_df, sim_year, pop_col='persons'):
     # male births 51%
     b_df['births_m_float'] = b_df['births_rounded'] * 0.51
 
+    b_df = b_df.join(rand_df)
     # 0 or 0.5 generated randomly by multiplying 0 or 1 by 0.5
-    np.random.seed(2010)
-    b_df['randomNumCol'] = 0.5 * np.random.randint(2, size=b_df.shape[0])
+    # np.random.seed(2010)
+    # b_df['random_number'] = 0.5 * np.random.randint(2, size=b_df.shape[0])
 
     # Add random 0 or 0.5
     # Convert to int which truncates float (floor)
-    b_df['births_m'] = b_df['births_m_float'] + b_df['randomNumCol']
+    b_df['births_m'] = b_df['births_m_float'] + b_df['random_number']
     b_df['births_m'] = b_df['births_m'].astype(int)
 
     # female births
@@ -177,10 +179,10 @@ def births_all(b_df, sim_year, pop_col='persons'):
     births_db = b_df_notnull[(b_df_notnull.births_m != 0) | (b_df_notnull.births_m != 0)].copy()
     births_db = births_db.reset_index(drop=False)
 #    births_db = births_db.drop('mig_in_net',1)
-    births_db = births_db.drop('sex',1)
+    births_db = births_db.drop('sex', 1)
     births_db.rename(columns={'births_m': 'male births'}, inplace=True)
     births_db.rename(columns={'births_f': 'female births'}, inplace=True)
-    births_db.rename(columns={'randomNumCol': 'add random then floor'}, inplace=True)
+    births_db.rename(columns={'random_number': 'add random then floor'}, inplace=True)
     births_db.rename(columns={'age': 'mother age'}, inplace=True)
     births_db.rename(columns={'race_ethn': 'mother race_ethn'}, inplace=True)
     births_db.rename(columns={'births_rounded': 'total births'}, inplace=True)
