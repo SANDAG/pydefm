@@ -142,6 +142,7 @@ class MigrationPopulationOut(luigi.Task):
 
         pop = pop[(pop['type'] == 'HHP') & (pop['mildep'] == 'N')]
 
+        pop = pop.fillna(0)
         pop = cp.out_migrating_population(pop)
         pop.to_hdf('temp/data.h5', 'mig_out', format='table', mode='a')
 
@@ -163,6 +164,7 @@ class MigrationPopulationIn(luigi.Task):
         pop = compute.rates_for_yr(pop, mig_rates, self.year)
         pop = pop[(pop['type'] == 'HHP') & (pop['mildep'] == 'N')]
 
+        pop = pop.fillna(0)
         pop = cp.in_migrating_population(pop)
 
         pop.to_hdf('temp/data.h5', 'mig_in', format='table', mode='a')
@@ -181,7 +183,7 @@ class NonMigratingPopulation(luigi.Task):
     def run(self):
         out_pop = pd.read_hdf('temp/data.h5', 'mig_out')
         pop = pd.read_hdf('temp/data.h5', 'pop')
-        pop = pop.join(out_pop)
+        pop = pop.join(out_pop, how='left')
         pop.loc[pop['type'].isin(['COL', 'INS', 'MIL', 'OTH']), ['mig_Dout', 'mig_Fout']] = 0
         pop.loc[pop['mildep'].isin(['Y']), ['mig_Dout', 'mig_Fout']] = 0
 
@@ -204,9 +206,9 @@ class DeadPopulation(luigi.Task):
         death_rates = pd.read_hdf('temp/data.h5', 'death_rates')
         death_rates = death_rates[(death_rates['yr'] == self.year)]
         pop = pd.read_hdf('temp/data.h5', 'non_mig_pop')
-        pop = pop.join(death_rates)
+        pop = pop.join(death_rates, how='left')
         pop = pop[(pop['type'] == 'HHP') & (pop['mildep'] == 'N')]
-
+        pop = pop.fillna(1)
         # do we apply death rates to mil pop?
         pop = cp.dead_population(pop)
         pop.to_hdf('temp/data.h5', 'dead_pop', format='table', mode='a')

@@ -68,7 +68,7 @@ sas_sql = '''SELECT [yr] as Year
             ,b_nonmil as births_sas_1005
             ,mig_net as net_mig_sas_1005
             FROM [isam].[demographic_output].[summary]
-            WHERE sim_id = 1006
+            WHERE sim_id = 1005
             '''
 
 sas_df = pd.read_sql(sas_sql, sql_in_engine, index_col='Year')
