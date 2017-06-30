@@ -158,3 +158,30 @@ SELECT [yr]
   FROM %s
   WHERE out_commuting_id = %s
   '''
+
+in_commuting = '''
+SELECT [yr]
+      ,[wh_whlh]
+  FROM %s
+  WHERE in_commuting_id = %s'''
+
+local_jobs = '''
+SELECT [yr]
+      ,[jlw]
+  FROM %s
+  WHERE local_jobs_id = %s
+  '''
+
+sectoral_share = '''
+SELECT [yr]
+      ,[sandag_sector]
+      ,[share]
+  FROM %s
+  WHERE sectoral_share_id = %s'''
+
+sectoral_pay = '''
+SELECT [yr]
+      ,[sandag_sector]
+      ,[annual_pay]
+  FROM %s
+  WHERE sectoral_pay_id = %s'''

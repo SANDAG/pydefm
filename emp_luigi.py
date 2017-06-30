@@ -184,33 +184,61 @@ class LocalWorkForce(luigi.Task):
         work_force = work_force.join(out_commuting)
         work_force['work_force_outside'] = (work_force['work_force'] * work_force['wtlh_lh']).round()
         work_force['work_force_local'] = (work_force['work_force'] - work_force['work_force_outside']).round()
-        work_force.to_hdf('temp/data.h5', 'local_work_force', mode='a')
+        work_force.to_hdf('temp/data.h5', 'work_force_local', mode='a')
 
 
 class Jobs(luigi.Task):
 
     def requires(self):
-        return WorkForce()
+        return LocalWorkForce()
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
 
     def run(self):
-        #in_commuting = extract.create_df('in_commuting', 'in_commuting_table', index=['yr'])
+        local_jobs = extract.create_df('local_jobs', 'local_jobs_table', index=['yr'])
+        in_commuting = extract.create_df('in_commuting', 'in_commuting_table', index=['yr'])
 
-        '''
-        work_force = pd.read_hdf('temp/data.h5', 'work_force')
-        work_force = work_force.reset_index(drop=False)
-        work_force = pd.DataFrame(work_force[['labor_force', 'unemployed', 'work_force']].groupby([work_force['yr']]).sum())
-        work_force = work_force.join(out_commuting)
-        work_force['work_force_outside'] = (work_force['work_force'] * work_force['wtlh_lh']).round()
-        work_force['work_force_local'] = (work_force['work_force'] - work_force['work_force_outside']).round()
-        work_force.to_hdf('temp/data.h5', 'local_work_force', mode='a')
-        '''
+        work_force_local = pd.read_hdf('temp/data.h5', 'work_force_local')
+        work_force_local = work_force_local.join(local_jobs)
+        work_force_local['jobs_local'] = (work_force_local['work_force_local'] * work_force_local['jlw']).round()
+        work_force_local = work_force_local.join(in_commuting)
+        work_force_local['jobs_total'] = (work_force_local['jobs_local'] * work_force_local['wh_whlh']).round()
+        work_force_local['jobs_external'] = (work_force_local['jobs_total'] - work_force_local['jobs_local']).round()
+
+        print work_force_local.head()
+        # pull information from here
+        work_force_local.to_hdf('temp/data.h5', 'jobs', mode='a')
+
+
+class SectoralPay(luigi.Task):
+
+    def requires(self):
+        return Jobs()
+
+    def output(self):
+        return luigi.LocalTarget('temp/data.h5')
+
+    def run(self):
+        sectoral_share = extract.create_df('sectoral_share', 'sectoral_share_table', index=['yr', 'sandag_sector'])
+        sectoral_pay = extract.create_df('sectoral_pay', 'sectoral_pay_table', index=['yr', 'sandag_sector'])
+
+        jobs = pd.read_hdf('temp/data.h5', 'jobs')
+        jobs = jobs[['jobs_total']]
+        jobs = jobs.join(sectoral_share, how='right')
+        jobs['jobs'] = (jobs['jobs_total'] * jobs['share']).round()
+        jobs = jobs.drop(['jobs_total'], 1)
+
+        jobs = jobs.join(sectoral_pay)
+        jobs['tot_ann_job_pay'] = (jobs['jobs']* jobs['annual_pay']).round()
+
+        jobs.to_csv('1.csv')
+        jobs.to_hdf('temp/data.h5', 'sectoral', mode='a')
+
 
 if __name__ == '__main__':
     os.makedirs('temp')
-    luigi.run(main_task_cls=LocalWorkForce)
+    luigi.run(main_task_cls=SectoralPay)
     shutil.rmtree('temp')
 
     #os.system("bokeh serve bokeh_graphs.py")
