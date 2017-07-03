@@ -1,11 +1,9 @@
 import luigi
-import inspect, os
+import os
 import pandas as pd
-import time
 from db import extract
 from db import log
 from forecast import compute
-from forecast import util
 import shutil
 import luigi.contrib.hadoop
 from pathlib import Path

@@ -1,19 +1,13 @@
 import luigi
-import inspect, os
+import os
 import pandas as pd
-import time
 from db import extract
-from db import log
 from db import sql
-from forecast import compute
 from forecast import util
 import shutil
 import luigi.contrib.hadoop
-from pathlib import Path
 from sqlalchemy import create_engine
 from pysandag.database import get_connection_string
-import defm_luigi as dl
-import numpy as np
 from pysandag import database
 
 
@@ -27,10 +21,6 @@ class IncPopulation(luigi.Task):
 
     def run(self):
 
-        my_file = Path('temp/data.h5')
-        if my_file.is_file():
-            print'File exists'
-        else:
             engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
             db_connection_string = database.get_connection_string('model_config.yml', 'in_db')
             sql_in_engine = create_engine(db_connection_string)
@@ -44,7 +34,7 @@ class IncPopulation(luigi.Task):
             rate_versions = util.yaml_to_dict('model_config.yml', 'rate_versions')
             tables = util.yaml_to_dict('model_config.yml', 'db_tables')
 
-            in_query = getattr(sql, 'inc_pop') % (tables['inc_pop_table'], rate_versions['inc_pop'])
+            in_query = getattr(sql, 'inc_pop') % (tables['inc_pop_table'], run_id[0])
             in_query2 = getattr(sql, 'inc_pop_mil') % (tables['population_table'], rate_versions['population'])
 
             pop = pd.read_sql(in_query, engine, index_col=['age', 'race_ethn', 'sex', 'mildep'])
@@ -72,6 +62,10 @@ class IncPopulation(luigi.Task):
 
 
 class IncomeByType(luigi.Task):
+
+    @property
+    def priority(self):
+        return 3
 
     def requires(self):
         return IncPopulation()
