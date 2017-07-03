@@ -17,13 +17,18 @@ from bokeh.models import (
 )
 from bokeh.layouts import layout
 from forecast import util
-
-sim_versions = util.yaml_to_dict('model_config.yml', 'simulation_versions')
+from db import sql
 
 defm_engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
 
 db_connection_string = database.get_connection_string('model_config.yml', 'in_db')
 sql_in_engine = create_engine(db_connection_string)
+
+
+in_query = getattr(sql, 'max_run_id')
+db_run_id = pd.read_sql(in_query, defm_engine, index_col=None)
+
+run_id = db_run_id['max'].iloc[0]
 
 results_sql = '''SELECT "Population" as pop_py
                         ,"Run_id"
@@ -32,7 +37,7 @@ results_sql = '''SELECT "Population" as pop_py
                         ,mig_in - mig_out as net_mig_py
                         ,new_born as births_py
                 FROM defm.population_summary
-                WHERE "Run_id" =''' + str(sim_versions['dem'])
+                WHERE "Run_id" =''' + str(run_id)
 
 results_df = pd.read_sql(results_sql, defm_engine, index_col='Year')
 
@@ -44,7 +49,7 @@ results_inc_sql = '''SELECT  yr as "Year",
                              "Supplemental_Social_Security" as supplemental_social_security_py,
                              "Social_Security" as social_security_py
                          FROM defm.non_wage_income
-                         WHERE run_id = ''' + str(sim_versions['inc'])
+                         WHERE run_id = ''' + str(run_id)
 
 results_inc_df = pd.read_sql(results_inc_sql, defm_engine, index_col='Year')
 
@@ -93,7 +98,7 @@ sas_inc_df = pd.read_sql(sas_inc_sql, sql_in_engine, index_col='Year')
 pop_sql = '''SELECT age, race_ethn, sex, type, mildep, persons, households, yr
                 FROM defm.population
                 WHERE run_id =
-                ''' + str(sim_versions['dem'])
+                ''' + str(run_id)
 pop_df = pd.read_sql(pop_sql, defm_engine, index_col=None)
 
 min_year = pop_df['yr'].min()

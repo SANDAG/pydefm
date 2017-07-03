@@ -31,15 +31,19 @@ class IncPopulation(luigi.Task):
         if my_file.is_file():
             print'File exists'
         else:
-            db_run_id = log.new_run(name='inc_run_log')
-            run_id = pd.Series([db_run_id])
-            run_id.to_hdf('temp/data.h5', 'run_id',  mode='a')
             engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
             db_connection_string = database.get_connection_string('model_config.yml', 'in_db')
             sql_in_engine = create_engine(db_connection_string)
 
+            in_query = getattr(sql, 'max_run_id')
+            db_run_id = pd.read_sql(in_query, engine, index_col=None)
+
+            run_id = pd.Series([db_run_id['max'].iloc[0]])
+            run_id.to_hdf('temp/data.h5', 'run_id',  mode='a')
+
             rate_versions = util.yaml_to_dict('model_config.yml', 'rate_versions')
             tables = util.yaml_to_dict('model_config.yml', 'db_tables')
+
             in_query = getattr(sql, 'inc_pop') % (tables['inc_pop_table'], rate_versions['inc_pop'])
             in_query2 = getattr(sql, 'inc_pop_mil') % (tables['population_table'], rate_versions['population'])
 
@@ -110,6 +114,6 @@ class IncomeByType(luigi.Task):
 
 
 if __name__ == '__main__':
-    shutil.rmtree('temp')
     os.makedirs('temp')
     luigi.run(main_task_cls=IncomeByType)
+    shutil.rmtree('temp')

@@ -357,6 +357,16 @@ class FinalPopulation(luigi.Task):
         pop = pop.set_index(['age', 'race_ethn', 'sex'])
 
         pop = cp.final_population(pop)
+
+        householder = extract.create_df('householder', 'householder_table')
+        householder = householder[(householder['yr'] == self.year)]
+        householder = householder.drop(['yr'], 1)
+
+        pop = pop.join(householder)
+        pop = pop.fillna(0)
+        pop['households'] = (pop['persons'] * pop['householder_rate']).round()
+        pop = pop.drop(['householder_rate'], 1)
+
         pop.to_hdf('temp/data.h5', 'pop', format='table', mode='a')
 
 

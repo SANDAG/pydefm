@@ -91,6 +91,16 @@ SELECT [yr]
   WHERE 1 = %s
   """
 
+householder = """
+SELECT [yr]
+      ,[age]
+      ,[race] as race_ethn
+      ,[sex]
+      ,[householder_rate]
+  FROM %s
+  WHERE [householder_rate_id] = %s
+      """
+
 inc_pop = """
 SELECT  age,
         race_ethn,
@@ -185,3 +195,8 @@ SELECT [yr]
       ,[annual_pay]
   FROM %s
   WHERE sectoral_pay_id = %s'''
+
+max_run_id = '''
+SELECT max(id)
+  FROM defm.runs
+'''
