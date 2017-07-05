@@ -181,11 +181,8 @@ class NonMigratingPopulation(luigi.Task):
     def run(self):
         out_pop = pd.read_hdf('temp/data.h5', 'mig_out')
         pop = pd.read_hdf('temp/data.h5', 'pop')
-        pop = pop.join(out_pop, how='left')
-        pop.loc[pop['type'].isin(['COL', 'INS', 'MIL', 'OTH']), ['mig_Dout', 'mig_Fout']] = 0
-        pop.loc[pop['mildep'].isin(['Y']), ['mig_Dout', 'mig_Fout']] = 0
 
-        pop = cp.non_migrating_population(pop)
+        pop = cp.non_migrating_population(pop, out_pop)
         pop.to_hdf('temp/data.h5', 'non_mig_pop', format='table', mode='a')
 
 

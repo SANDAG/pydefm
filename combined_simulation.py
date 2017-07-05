@@ -4,6 +4,8 @@ import shutil
 import defm_luigi as defm
 import inc_luigi as inc
 import emp_luigi as emp
+import sys
+import time
 
 
 class CombinedSimulation(luigi.Task):
@@ -26,3 +28,5 @@ if __name__ == '__main__':
     shutil.rmtree('temp')
 
     os.system("bokeh serve bokeh_graphs.py")
+    time.sleep(600)
+    sys.exit()

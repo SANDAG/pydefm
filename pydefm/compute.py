@@ -34,7 +34,10 @@ def out_migrating_population(pop):
         return pop
 
 
-def non_migrating_population(pop):
+def non_migrating_population(pop, out_pop):
+    pop = pop.join(out_pop, how='left')
+    pop.loc[pop['type'].isin(['COL', 'INS', 'MIL', 'OTH']), ['mig_Dout', 'mig_Fout']] = 0
+    pop.loc[pop['mildep'].isin(['Y']), ['mig_Dout', 'mig_Fout']] = 0
     pop['non_mig_pop'] = (pop['persons'] - pop['mig_Dout'] - pop['mig_Fout']).round()
     return pop
 
