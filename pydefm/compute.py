@@ -21,6 +21,9 @@ import pandas as pd
 
 
 def in_migrating_population(pop):
+    pop = pop[(pop['type'] == 'HHP') & (pop['mildep'] == 'N')]
+
+    pop = pop.fillna(0)
     pop['mig_Din'] = (pop['persons'] * pop['DIN']).round()
     pop['mig_Fin'] = (pop['persons'] * pop['FIN']).round()
     pop = pop[['mig_Din', 'mig_Fin']]
@@ -28,10 +31,13 @@ def in_migrating_population(pop):
 
 
 def out_migrating_population(pop):
-        pop['mig_Dout'] = (pop['persons'] * pop['DOUT']).round()
-        pop['mig_Fout'] = (pop['persons'] * pop['FOUT']).round()
-        pop = pop[['mig_Dout', 'mig_Fout']]
-        return pop
+    pop = pop[(pop['type'] == 'HHP') & (pop['mildep'] == 'N')]
+
+    pop = pop.fillna(0)
+    pop['mig_Dout'] = (pop['persons'] * pop['DOUT']).round()
+    pop['mig_Fout'] = (pop['persons'] * pop['FOUT']).round()
+    pop = pop[['mig_Dout', 'mig_Fout']]
+    return pop
 
 
 def non_migrating_population(pop, out_pop):

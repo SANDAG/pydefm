@@ -138,10 +138,8 @@ class MigrationPopulationOut(luigi.Task):
         pop = pd.read_hdf('temp/data.h5', 'pop')
         pop = compute.rates_for_yr(pop, mig_rates, self.year)
 
-        pop = pop[(pop['type'] == 'HHP') & (pop['mildep'] == 'N')]
-
-        pop = pop.fillna(0)
         pop = cp.out_migrating_population(pop)
+
         pop.to_hdf('temp/data.h5', 'mig_out', format='table', mode='a')
 
 
@@ -160,9 +158,7 @@ class MigrationPopulationIn(luigi.Task):
         mig_rates = pd.read_hdf('temp/data.h5', 'in_mig_rates')
         pop = pd.read_hdf('temp/data.h5', 'pop')
         pop = compute.rates_for_yr(pop, mig_rates, self.year)
-        pop = pop[(pop['type'] == 'HHP') & (pop['mildep'] == 'N')]
 
-        pop = pop.fillna(0)
         pop = cp.in_migrating_population(pop)
 
         pop.to_hdf('temp/data.h5', 'mig_in', format='table', mode='a')
