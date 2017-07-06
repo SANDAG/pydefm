@@ -18,6 +18,8 @@ install:
 
 script:
   - py.test --cov=pydefm tests/
+  - pep8 pydefm
+
 
 after_success:
   - coveralls
