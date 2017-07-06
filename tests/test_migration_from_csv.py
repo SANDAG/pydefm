@@ -8,38 +8,64 @@ import numpy as np
 
 @pytest.fixture
 def pop():
-    return pd.read_csv('tests/data/population.csv',index_col=[0,1,2])
+    return pd.read_csv('tests/data/migration/population.csv',index_col=[0,1,2])
+
+
+# @pytest.fixture
+# def m_rates():
+#     return pd.read_csv('tests/data/input/migration_rates.csv',index_col=[0,1,2])
 
 
 @pytest.fixture
-def m_rates():
-    return pd.read_csv('tests/data/migration_rates.csv',index_col=[0,1,2])
+def pop_w_mig_rates():
+    return pd.read_csv('tests/data/migration/population_w_migration_rates.csv',index_col=[0,1,2])
 
 
 @pytest.fixture
-def joined_pop_rates():
-    return pd.read_csv('tests/data/population_w_migration_rates.csv',index_col=[0,1,2])
+def pop_in():
+    return pd.read_csv('tests/data/migration/population_in_migrating.csv',index_col=[0,1,2],dtype = {'mig_Din':  np.float64, 'mig_Fin': np.float64})
+
+@pytest.fixture
+def pop_out():
+    return pd.read_csv('tests/data/migration/population_out_migrating.csv',index_col=[0,1,2],dtype = {'mig_Dout':  np.float64})
+
+
+# @pytest.fixture
+# def pop_out():
+#     return pd.read_csv('tests/data/pop_Dout_Fout.csv',index_col=[0,1,2])
+
+
+# @pytest.mark.parametrize(
+#     "expected",
+#     [pd.read_csv('tests/data/output/population_w_migration_rates.csv',index_col=[0,1,2])])
+# def test_migration(pop, m_rates, expected):
+#     result =  migration.migrating_pop(pop, m_rates)
+#     tm.assert_frame_equal(result, expected)
+
+
+# @pytest.mark.parametrize(
+#     "expected",
+#     [pd.read_csv('tests/data/migrating_pop/non_migrating_pop.csv',index_col=[0,1,2],dtype = {'mig_Dout':  np.float64, 'non_mig_pop': np.float64})])
+# def test_non_migrating_pop(joined_pop_rates, expected):
+#     result = migration.non_migrating_pop(joined_pop_rates)
+#     tm.assert_frame_equal(result, expected)
+#
+
+
+def test_in_migrating_population(pop_w_mig_rates, pop_in):
+    result = compute.in_migrating_population(pop_w_mig_rates)
+    result.to_csv('tests/data/result_out_mig_changes.csv')
+    tm.assert_frame_equal(result, pop_in)
+
+
+def test_out_migrating_population(pop_w_mig_rates, pop_out):
+    result = compute.out_migrating_population(pop_w_mig_rates)
+    tm.assert_frame_equal(result, pop_out)
 
 
 @pytest.mark.parametrize(
     "expected",
-    [pd.read_csv('tests/data/population_w_migration_rates.csv',index_col=[0,1,2])])
-def test_migration(pop, m_rates, expected):
-    result =  migration.migrating_pop(pop, m_rates)
-    tm.assert_frame_equal(result, expected)
-
-
-@pytest.mark.parametrize(
-    "expected",
-    [pd.read_csv('tests/data/non_migrating_pop.csv',index_col=[0,1,2],dtype = {'mig_Dout':  np.float64, 'non_mig_pop': np.float64})])
-def test_non_migrating_pop(joined_pop_rates, expected):
-    result = migration.non_migrating_pop(joined_pop_rates)
-    tm.assert_frame_equal(result, expected)
-
-
-@pytest.mark.parametrize(
-    "expected",
-    [pd.read_csv('tests/data/in_migrating_pop.csv',index_col=[0,1,2],dtype = {'mig_Din':  np.float64, 'mig_Fin': np.float64})])
-def test_in_migrating_population(joined_pop_rates, expected):
-    result = compute.in_migrating_population(joined_pop_rates)
+    [pd.read_csv('tests/data/migration/non_migrating_population.csv',index_col=[0,1,2],dtype = {'mig_Dout':  np.float64,'mig_Fout':  np.float64,'non_mig_pop': np.float64})])
+def test_non_migrating_population(pop,pop_out,expected):
+    result = compute.non_migrating_population(pop,pop_out)
     tm.assert_frame_equal(result, expected)
