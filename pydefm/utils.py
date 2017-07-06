@@ -41,5 +41,3 @@ def population_w_rates(population, rates_for_yr):
 
     """
     return population.join(rates_for_yr, how='left', sort=False)
-
-
