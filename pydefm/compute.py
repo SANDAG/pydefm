@@ -61,7 +61,10 @@ def new_born_population(pop):
 '''
 
 
-def non_migrating_survived_pop(pop):
+def non_migrating_survived_pop(pop, deaths):
+    non_mig_pop = non_mig_pop.join(deaths, how='left')
+    non_mig_pop.loc[non_mig_pop['type'].isin(['COL', 'INS', 'MIL', 'OTH']), ['deaths']] = 0
+    non_mig_pop.loc[non_mig_pop['mildep'].isin(['Y']), ['deaths']] = 0
     pop['non_mig_survived_pop'] = (pop['non_mig_pop'] - pop['deaths']).round()
     return pop
 

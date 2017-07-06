@@ -218,13 +218,7 @@ class NonMigratingSurvivedPop(luigi.Task):
     def run(self):
         deaths = pd.read_hdf('temp/data.h5', 'dead_pop')
         non_mig_pop = pd.read_hdf('temp/data.h5', 'non_mig_pop')
-        non_mig_pop = non_mig_pop.join(deaths, how='left')
-
-        non_mig_pop.loc[non_mig_pop['type'].isin(['COL', 'INS', 'MIL', 'OTH']), ['deaths']] = 0
-        non_mig_pop.loc[non_mig_pop['mildep'].isin(['Y']), ['deaths']] = 0
-
-        non_mig_pop = cp.non_migrating_survived_pop(non_mig_pop)
-
+        non_mig_pop = cp.non_migrating_survived_pop(non_mig_pop, deaths)
         non_mig_pop.to_hdf('temp/data.h5', 'non_mig_survived_pop', format='table', mode='a')
 
 
