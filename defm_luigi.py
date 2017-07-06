@@ -198,8 +198,7 @@ class DeadPopulation(luigi.Task):
         death_rates = death_rates[(death_rates['yr'] == self.year)]
         pop = pd.read_hdf('temp/data.h5', 'non_mig_pop')
         pop = pop.join(death_rates, how='left')
-        pop = pop[(pop['type'] == 'HHP') & (pop['mildep'] == 'N')]
-        pop = pop.fillna(1)
+
         # do we apply death rates to mil pop?
         pop = cp.dead_population(pop)
         pop.to_hdf('temp/data.h5', 'dead_pop', format='table', mode='a')
