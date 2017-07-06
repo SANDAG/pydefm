@@ -65,7 +65,7 @@ def non_migrating_survived_pop(pop, deaths):
     pop = pop.join(deaths, how='left')
     pop.loc[pop['type'].isin(['COL', 'INS', 'MIL', 'OTH']), ['deaths']] = 0
     pop.loc[pop['mildep'].isin(['Y']), ['deaths']] = 0
-    pop['non_mig_survived_pop'] = (pop['pop'] - pop['deaths']).round()
+    pop['non_mig_survived_pop'] = (pop['non_mig_pop'] - pop['deaths']).round()
     return pop
 
 
