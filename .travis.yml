@@ -14,6 +14,7 @@ install:
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy pandas pip
   - source activate test-environment
   - pip install pytest-cov coveralls
+  - pip install pep8
   - pip install .
 
 script:
