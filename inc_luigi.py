@@ -9,6 +9,7 @@ import luigi.contrib.hadoop
 from sqlalchemy import create_engine
 from pysandag.database import get_connection_string
 from pysandag import database
+from db import log
 
 
 class IncPopulation(luigi.Task):
@@ -27,6 +28,7 @@ class IncPopulation(luigi.Task):
 
             in_query = getattr(sql, 'max_run_id')
             db_run_id = pd.read_sql(in_query, engine, index_col=None)
+            # db_run_id = log.new_run(name='inc_run_log', run_id=db_run_id['max'].iloc[0])
 
             run_id = pd.Series([db_run_id['max'].iloc[0]])
             run_id.to_hdf('temp/data.h5', 'run_id',  mode='a')
@@ -96,9 +98,11 @@ class IncomeByType(luigi.Task):
         inc_type_rates.rename(columns={'retp': 'Retirement'}, inplace=True)
         inc_type_rates.rename(columns={'ssip': 'Supplemental_Social_Security'}, inplace=True)
         inc_type_rates.rename(columns={'ssp': 'Social_Security'}, inplace=True)
+        inc_type_rates.rename(columns={'semp': 'Selfemp_Income'}, inplace=True)
 
+        print inc_type_rates
         inc_type_rates = inc_type_rates[['Interest', 'Other', 'Public_Assistance', 'Retirement',
-                                         'Supplemental_Social_Security', 'Social_Security']]
+                                         'Supplemental_Social_Security', 'Social_Security', 'Selfemp_Income']]
 
         run_table = pd.read_hdf('temp/data.h5', 'run_id')
         run_id = run_table[0]

@@ -13,7 +13,7 @@ class CombinedSimulation(luigi.Task):
     def requires(self):
         return {'def': defm.Iter(),
                 'inc': inc.IncomeByType(),
-                'emp': emp.SectoralPay()}
+                'emp': emp.AverageWage()}
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')

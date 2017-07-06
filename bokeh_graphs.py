@@ -53,6 +53,19 @@ results_inc_sql = '''SELECT  yr as "Year",
 
 results_inc_df = pd.read_sql(results_inc_sql, defm_engine, index_col='Year')
 
+results_emp_sql = '''SELECT yr as "Year",
+                    labor_force as labor_force_py,
+                    unemployed as unemployed_py,
+                    work_force as work_force_py,
+                    jobs_total as jobs_total_py,
+                    avg_wage as avg_wage_py,
+                    jobs_local_wages as jobs_local_wages_py,
+                    wf_outside_wages as wf_outside_wages_py
+                    FROM defm.emp_summary
+                    WHERE run_id = ''' + str(run_id)
+
+results_emp_df = pd.read_sql(results_emp_sql, defm_engine, index_col='Year')
+
 dof_sql = '''
             SELECT TOP 1000 [county_name]
                   ,[calendar_yr] as Year
@@ -69,7 +82,7 @@ dof_df = pd.read_sql(dof_sql, sql_in_engine, index_col='Year')
 
 sas_sql = '''SELECT [yr] as Year
             ,[p] as pop_sas_1005
-            ,d_hp as deaths_sas_1005
+            ,[d_nonmil] as deaths_sas_1005
             ,b_nonmil as births_sas_1005
             ,mig_net as net_mig_sas_1005
             FROM [isam].[demographic_output].[summary]
@@ -88,9 +101,54 @@ sas_inc_sql = '''
       Supplemental_Social_Security as Supplemental_Social_Security_sas,
       Social_Security as Social_Security_sas
     FROM [isam].[economic_output].[unearned_income]
+    WHERE [economic_simulation_id] = 1002
     '''
 
 sas_inc_df = pd.read_sql(sas_inc_sql, sql_in_engine, index_col='Year')
+
+sas_emp_sql = '''
+    SELECT
+       [yr] as Year
+      ,[people]
+      ,[labor_force]
+      ,[unemployed]
+      ,[work_force]
+      ,[work_force_local]
+      ,[work_force_outside]
+      ,[jobs_total]
+      ,[jobs_local]
+      ,[jobs_external]
+      ,[avg_wage]
+      ,[jobs_total_wages]
+      ,[jobs_local_wages]
+      ,[jobs_external_wages]
+      ,[wf_outside_wages]
+      ,[unearned_income]
+      ,[selfemp_income]
+      ,[people_with_se_inc]
+      ,[people_with_se_and_wage_inc]
+      ,[people_with_only_se_inc]
+      ,[military_income]
+      ,[personal_income]
+      ,[taxable_retail_sales]
+      ,[total_population]
+      ,[households]
+      ,[net_migration]
+      ,[deaths]
+      ,[births]
+      ,[wap1]
+      ,[wap2]
+      ,[P_6599]
+      ,[P_0014]
+      ,[P_0019]
+      ,[P_1524]
+      ,[P_2064]
+      ,[P_2564]
+    FROM [isam].[economic_output].[summary]
+    WHERE [economic_simulation_id] = 1002
+    '''
+
+sas_emp_df = pd.read_sql(sas_emp_sql, sql_in_engine, index_col='Year')
 
 
 # Age distribution
@@ -141,6 +199,8 @@ df = dof_df.join(results_df)
 df = df.join(sas_df)
 
 df2 = sas_inc_df.join(results_inc_df)
+
+df3 = sas_emp_df.join(results_emp_df)
 
 plot2 = figure(plot_height=800, plot_width=1400, title="Main difference: applying survival rates to new born",
               tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label = "Population",
@@ -299,6 +359,37 @@ def animate():
 button = Button(label='► Play', width=60)
 button.on_click(animate)
 
+
+plot8 = figure(plot_height=800, plot_width=1400, title="Labor Force",
+              tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label="Dollars ($)",
+                 x_axis_label="Year")
+
+plot8.line(df3.index.tolist(), df3['labor_force_py'], line_width=2, legend="Labor Force PY")
+plot8.line(df3.index.tolist(), df3['labor_force'], line_width=2, legend="Labor Force SAS", line_color="orange", line_dash=[4, 4])
+
+
+plot9 = figure(plot_height=800, plot_width=1400, title="Average wages in the region",
+              tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label="Dollars ($)",
+                 x_axis_label="Year")
+
+plot9.line(df3.index.tolist(), df3['avg_wage_py'], line_width=2, legend="Average wage PY")
+plot9.line(df3.index.tolist(), df3['avg_wage'], line_width=2, legend="Average wage SAS", line_color="orange", line_dash=[4, 4])
+
+
+plot10 = figure(plot_height=800, plot_width=1400, title="Local Jobs Wages",
+              tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label="Dollars ($)",
+                 x_axis_label="Year")
+
+plot10.line(df3.index.tolist(), df3['jobs_local_wages_py'], line_width=2, legend="Jobs local wages PY")
+plot10.line(df3.index.tolist(), df3['jobs_local_wages'], line_width=2, legend="Jobs local wages SAS", line_color="orange", line_dash=[4, 4])
+
+plot11 = figure(plot_height=800, plot_width=1400, title="Work Force outside San Diego Wages",
+              tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label="Dollars ($)",
+                 x_axis_label="Year")
+
+plot11.line(df3.index.tolist(), df3['wf_outside_wages_py'], line_width=2, legend="Work Force outside wages Py")
+plot11.line(df3.index.tolist(), df3['wf_outside_wages'], line_width=2, legend="Work Force outside wages SAS", line_color="orange", line_dash=[4, 4])
+
 layout = layout([
     [plot],
     [Year, button],
@@ -308,6 +399,11 @@ layout = layout([
     [plot4],
     [plot5],
     [plot6],
+    [plot8],
+    [plot9],
+    [plot10],
+    [plot11],
+
 ], sizing_mode='scale_width')
 
 curdoc().add_root(layout)

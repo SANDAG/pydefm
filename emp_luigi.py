@@ -9,6 +9,7 @@ import luigi.contrib.hadoop
 from sqlalchemy import create_engine
 from pysandag.database import get_connection_string
 from pysandag import database
+from db import log
 
 
 class EmpPopulation(luigi.Task):
@@ -27,6 +28,8 @@ class EmpPopulation(luigi.Task):
 
             in_query = getattr(sql, 'max_run_id')
             db_run_id = pd.read_sql(in_query, engine, index_col=None)
+            print db_run_id['max'].iloc[0]
+            # db_run_id = log.new_run(name='emp_run_log', run_id=db_run_id['max'].iloc[0])
 
             run_id = pd.Series([db_run_id['max'].iloc[0]])
             run_id.to_hdf('temp/data.h5', 'run_id',  mode='a')
@@ -207,10 +210,6 @@ class Jobs(luigi.Task):
 
 class SectoralPay(luigi.Task):
 
-    @property
-    def priority(self):
-        return 2
-
     def requires(self):
         return Jobs()
 
@@ -224,19 +223,51 @@ class SectoralPay(luigi.Task):
         jobs = pd.read_hdf('temp/data.h5', 'jobs')
         jobs = jobs[['jobs_total']]
         jobs = jobs.join(sectoral_share, how='right')
-        jobs['jobs'] = (jobs['jobs_total'] * jobs['share']).round()
+        jobs['sector_jobs'] = (jobs['jobs_total'] * jobs['share']).round()
         jobs = jobs.drop(['jobs_total'], 1)
 
         jobs = jobs.join(sectoral_pay)
-        jobs['tot_ann_job_pay'] = (jobs['jobs']* jobs['annual_pay']).round()
+        jobs['tot_ann_job_pay'] = (jobs['sector_jobs']* jobs['annual_pay']).round()
 
-        jobs.to_csv('1.csv')
         jobs.to_hdf('temp/data.h5', 'sectoral', mode='a')
 
 
+class AverageWage(luigi.Task):
+
+    @property
+    def priority(self):
+        return 2
+
+    def requires(self):
+        return SectoralPay()
+
+    def output(self):
+        return luigi.LocalTarget('temp/data.h5')
+
+    def run(self):
+        engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
+
+        jobs = pd.read_hdf('temp/data.h5', 'jobs')
+        sectoral_wages = pd.read_hdf('temp/data.h5', 'sectoral')
+        sectoral_wages = sectoral_wages.reset_index(drop=False)
+        sectoral_wages = pd.DataFrame(sectoral_wages[['sector_jobs', 'tot_ann_job_pay']].groupby([sectoral_wages['yr']]).sum())
+        sectoral_wages['avg_wage'] = (sectoral_wages['tot_ann_job_pay'] / sectoral_wages['sector_jobs'] )
+        jobs = jobs.join(sectoral_wages['avg_wage'])
+        jobs['jobs_total_wages'] = (jobs['jobs_total'] * jobs['avg_wage']).round()
+        jobs['jobs_local_wages'] = (jobs['jobs_local'] * jobs['avg_wage']).round()
+        jobs['jobs_external_wages'] = (jobs['jobs_external'] * jobs['avg_wage']).round()
+        jobs['wf_outside_wages'] = (jobs['work_force_outside'] * jobs['avg_wage']).round()
+        jobs['avg_wage'] = (jobs['avg_wage']).round()
+
+        run_table = pd.read_hdf('temp/data.h5', 'run_id')
+        run_id = run_table[0]
+        jobs['run_id'] = run_id
+
+        jobs.to_sql(name='emp_summary', con=engine, schema='defm', if_exists='append', index=True)
+
 if __name__ == '__main__':
     os.makedirs('temp')
-    luigi.run(main_task_cls=SectoralPay)
+    luigi.run(main_task_cls=AverageWage)
     shutil.rmtree('temp')
 
 
