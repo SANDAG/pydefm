@@ -20,6 +20,9 @@ def pop():
 def pop_w_mig_rates():
     return pd.read_csv('tests/data/migration/population_w_migration_rates.csv',index_col=[0,1,2])
 
+@pytest.fixture
+def pop_w_death_rates():
+    return pd.read_csv('tests/data/deaths/population_w_death_rates.csv',index_col=[0,1,2])
 
 @pytest.fixture
 def pop_in():
@@ -29,6 +32,13 @@ def pop_in():
 def pop_out():
     return pd.read_csv('tests/data/migration/population_out_migrating.csv',index_col=[0,1,2],dtype = {'mig_Dout':  np.float64})
 
+@pytest.fixture
+def pop_dead():
+    return pd.read_csv('tests/data/deaths/population_deaths.csv',index_col=[0,1,2],dtype = {'deaths':  np.float64})
+
+@pytest.fixture
+def pop_non_mig():
+    return pd.read_csv('tests/data/migration/non_migrating_population.csv',index_col=[0,1,2],dtype = {'mig_Dout':  np.float64,'mig_Fout':  np.float64,'non_mig_pop': np.float64})
 
 # @pytest.fixture
 # def pop_out():
@@ -63,9 +73,26 @@ def test_out_migrating_population(pop_w_mig_rates, pop_out):
     tm.assert_frame_equal(result, pop_out)
 
 
+def test_non_migrating_population(pop,pop_out,pop_non_mig):
+    result = compute.non_migrating_population(pop,pop_out)
+    tm.assert_frame_equal(result, pop_non_mig)
+
+
+def test_dead_population(pop_w_death_rates, pop_dead):
+    result = compute.dead_population(pop_w_death_rates)
+    tm.assert_frame_equal(result, pop_dead)
+
+
 @pytest.mark.parametrize(
     "expected",
-    [pd.read_csv('tests/data/migration/non_migrating_population.csv',index_col=[0,1,2],dtype = {'mig_Dout':  np.float64,'mig_Fout':  np.float64,'non_mig_pop': np.float64})])
-def test_non_migrating_population(pop,pop_out,expected):
-    result = compute.non_migrating_population(pop,pop_out)
+    [pd.read_csv('tests/data/deaths/non_migrating_survived_population.csv',
+                 index_col=[0,1,2],dtype = {'mig_Dout':  np.float64,
+                                            'mig_Fout':  np.float64,
+                                            'non_mig_pop': np.float64,
+                                            'mig_Fout':  np.float64,
+                                            'non_mig_pop': np.float64,
+                                            'deaths':  np.float64,
+                                            'non_mig_survived_pop': np.float64})])
+def test_non_migrating_survived_pop(pop_non_mig,pop_dead,expected):
+    result = compute.non_migrating_survived_pop(pop_non_mig,pop_dead)
     tm.assert_frame_equal(result, expected)
