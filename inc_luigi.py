@@ -37,7 +37,7 @@ class IncPopulation(luigi.Task):
             tables = util.yaml_to_dict('model_config.yml', 'db_tables')
 
             in_query = getattr(sql, 'inc_pop') % (tables['inc_pop_table'], run_id[0])
-            in_query2 = getattr(sql, 'inc_pop_mil') % (tables['population_table'], rate_versions['population'])
+            in_query2 = getattr(sql, 'inc_mil_hh_pop') % (tables['population_table'], rate_versions['population'])
 
             pop = pd.read_sql(in_query, engine, index_col=['age', 'race_ethn', 'sex', 'mildep'])
             pop_mil = pd.read_sql(in_query2, sql_in_engine, index_col=['age', 'race_ethn', 'sex', 'mildep'])
@@ -84,6 +84,13 @@ class IncomeByType(luigi.Task):
         inc_type_rates['totals'] = (inc_type_rates['income'] * inc_type_rates['persons'] * inc_type_rates['share'])
         inc_type_rates = inc_type_rates.reset_index(drop=False)
 
+        inc_type_rates['multiplier'] = 0
+
+        inc_type_rates.loc[inc_type_rates['yr'] > 2014, ['multiplier']] = (.01 * (inc_type_rates['yr'] - 2014))
+            #pow(1.01, mil_wages.index.get_level_values('yr') - 2014)
+
+        inc_type_rates['totals'] = (inc_type_rates['totals'] + inc_type_rates['totals'] * inc_type_rates['multiplier'])
+
         inc_type_rates = pd.DataFrame(inc_type_rates['totals'].groupby([inc_type_rates['yr'], inc_type_rates['income_type']]).sum())
 
         inc_type_rates = inc_type_rates.reset_index(drop=False)
@@ -100,10 +107,10 @@ class IncomeByType(luigi.Task):
         inc_type_rates.rename(columns={'ssp': 'Social_Security'}, inplace=True)
         inc_type_rates.rename(columns={'semp': 'Selfemp_Income'}, inplace=True)
 
-        print inc_type_rates
         inc_type_rates = inc_type_rates[['Interest', 'Other', 'Public_Assistance', 'Retirement',
                                          'Supplemental_Social_Security', 'Social_Security', 'Selfemp_Income']]
 
+        inc_type_rates.to_hdf('temp/data.h5', 'ue_income')
         run_table = pd.read_hdf('temp/data.h5', 'run_id')
         run_id = run_table[0]
 

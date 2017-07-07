@@ -60,7 +60,8 @@ results_emp_sql = '''SELECT yr as "Year",
                     jobs_total as jobs_total_py,
                     avg_wage as avg_wage_py,
                     jobs_local_wages as jobs_local_wages_py,
-                    wf_outside_wages as wf_outside_wages_py
+                    wf_outside_wages as wf_outside_wages_py,
+                    personal_income as personal_income_py
                     FROM defm.emp_summary
                     WHERE run_id = ''' + str(run_id)
 
@@ -361,7 +362,7 @@ button.on_click(animate)
 
 
 plot8 = figure(plot_height=800, plot_width=1400, title="Labor Force",
-              tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label="Dollars ($)",
+              tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label="Persons",
                  x_axis_label="Year")
 
 plot8.line(df3.index.tolist(), df3['labor_force_py'], line_width=2, legend="Labor Force PY")
@@ -390,6 +391,14 @@ plot11 = figure(plot_height=800, plot_width=1400, title="Work Force outside San 
 plot11.line(df3.index.tolist(), df3['wf_outside_wages_py'], line_width=2, legend="Work Force outside wages Py")
 plot11.line(df3.index.tolist(), df3['wf_outside_wages'], line_width=2, legend="Work Force outside wages SAS", line_color="orange", line_dash=[4, 4])
 
+
+plot12 = figure(plot_height=800, plot_width=1400, title="Personal Income",
+              tools="crosshair,pan,reset,save,wheel_zoom", y_axis_label="Dollars ($)",
+                 x_axis_label="Year")
+
+plot12.line(df3.index.tolist(), df3['personal_income_py'], line_width=2, legend="Personal Income Py")
+plot12.line(df3.index.tolist(), df3['personal_income'], line_width=2, legend="Personal Income SAS", line_color="orange", line_dash=[4, 4])
+
 layout = layout([
     [plot],
     [Year, button],
@@ -403,6 +412,7 @@ layout = layout([
     [plot9],
     [plot10],
     [plot11],
+    [plot12],
 
 ], sizing_mode='scale_width')
 

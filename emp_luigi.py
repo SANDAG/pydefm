@@ -38,7 +38,7 @@ class EmpPopulation(luigi.Task):
             tables = util.yaml_to_dict('model_config.yml', 'db_tables')
 
             in_query = getattr(sql, 'inc_pop') % (tables['inc_pop_table'], run_id[0])
-            in_query2 = getattr(sql, 'inc_pop_mil') % (tables['population_table'], rate_versions['population'])
+            in_query2 = getattr(sql, 'inc_mil_hh_pop') % (tables['population_table'], rate_versions['population'])
 
             pop = pd.read_sql(in_query, engine, index_col=['age', 'race_ethn', 'sex', 'mildep'])
             pop_mil = pd.read_sql(in_query2, sql_in_engine, index_col=['age', 'race_ethn', 'sex', 'mildep'])
@@ -75,6 +75,48 @@ class EmpPopulation(luigi.Task):
             pop = pd.DataFrame(pop['persons'].groupby([pop['yr'], pop['age_cat'], pop['sex'], pop['race_ethn']]).sum())
             print pop.head()
             pop.to_hdf('temp/data.h5', 'pop', mode='a')
+
+
+class MilPopulation(luigi.Task):
+
+    def requires(self):
+        return None
+
+    def output(self):
+        return luigi.LocalTarget('temp/data.h5')
+
+    def run(self):
+
+            engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
+            db_connection_string = database.get_connection_string('model_config.yml', 'in_db')
+            sql_in_engine = create_engine(db_connection_string)
+
+            in_query = getattr(sql, 'max_run_id')
+            db_run_id = pd.read_sql(in_query, engine, index_col=None)
+
+            run_id = pd.Series([db_run_id['max'].iloc[0]])
+            run_id.to_hdf('temp/data.h5', 'run_id',  mode='a')
+
+            rate_versions = util.yaml_to_dict('model_config.yml', 'rate_versions')
+            tables = util.yaml_to_dict('model_config.yml', 'db_tables')
+
+            in_query = getattr(sql, 'inc_mil_gc_pop') % (tables['inc_pop_table'], run_id[0])
+            in_query2 = getattr(sql, 'inc_mil_hh_pop') % (tables['population_table'], rate_versions['population'])
+
+            pop = pd.read_sql(in_query, engine, index_col=['age', 'race_ethn', 'sex'])
+            pop_mil = pd.read_sql(in_query2, sql_in_engine, index_col=['age', 'race_ethn', 'sex'])
+
+            pop_mil = pop_mil.loc[pop_mil['mildep'] == 'Y']
+            pop = pop.join(pop_mil)
+
+            pop.rename(columns={'persons': 'mil_gc_pop'}, inplace=True)
+            pop.rename(columns={'mil_mildep': 'mil_hh_pop'}, inplace=True)
+
+            pop = pop.reset_index(drop=False)
+
+            pop = pd.DataFrame(pop[['mil_gc_pop', 'mil_hh_pop']].groupby([pop['yr']]).sum())
+            print pop.head()
+            pop.to_hdf('temp/data.h5', 'mil_pop', mode='a')
 
 
 class LaborForceParticipationRates(luigi.Task):
@@ -182,6 +224,7 @@ class LocalWorkForce(luigi.Task):
         work_force['work_force_outside'] = (work_force['work_force'] * work_force['wtlh_lh']).round()
         work_force['work_force_local'] = (work_force['work_force'] - work_force['work_force_outside']).round()
         work_force.to_hdf('temp/data.h5', 'work_force_local', mode='a')
+        print work_force
 
 
 class Jobs(luigi.Task):
@@ -221,7 +264,11 @@ class SectoralPay(luigi.Task):
         sectoral_pay = extract.create_df('sectoral_pay', 'sectoral_pay_table', index=['yr', 'sandag_sector'])
 
         jobs = pd.read_hdf('temp/data.h5', 'jobs')
+
+        print sectoral_share
+
         jobs = jobs[['jobs_total']]
+        print jobs
         jobs = jobs.join(sectoral_share, how='right')
         jobs['sector_jobs'] = (jobs['jobs_total'] * jobs['share']).round()
         jobs = jobs.drop(['jobs_total'], 1)
@@ -232,11 +279,20 @@ class SectoralPay(luigi.Task):
         jobs.to_hdf('temp/data.h5', 'sectoral', mode='a')
 
 
-class AverageWage(luigi.Task):
+class MilPay(luigi.Task):
 
-    @property
-    def priority(self):
-        return 2
+    def requires(self):
+        return MilPopulation()
+
+    def output(self):
+        return luigi.LocalTarget('temp/data.h5')
+
+    def run(self):
+        mil_pay = extract.create_df('mil_pay', 'mil_pay_table', index=['yr'])
+        mil_pay.to_hdf('temp/data.h5', 'mil_pay', mode='a')
+
+
+class HouseHoldWages(luigi.Task):
 
     def requires(self):
         return SectoralPay()
@@ -245,7 +301,6 @@ class AverageWage(luigi.Task):
         return luigi.LocalTarget('temp/data.h5')
 
     def run(self):
-        engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
 
         jobs = pd.read_hdf('temp/data.h5', 'jobs')
         sectoral_wages = pd.read_hdf('temp/data.h5', 'sectoral')
@@ -259,15 +314,81 @@ class AverageWage(luigi.Task):
         jobs['wf_outside_wages'] = (jobs['work_force_outside'] * jobs['avg_wage']).round()
         jobs['avg_wage'] = (jobs['avg_wage']).round()
 
+        jobs.to_hdf('temp/data.h5', 'hh_income', mode='a')
+
+
+class MilWages(luigi.Task):
+
+    def requires(self):
+        return MilPay()
+
+    def output(self):
+        return luigi.LocalTarget('temp/data.h5')
+
+    def run(self):
+        mil_pop = pd.read_hdf('temp/data.h5', 'mil_pop')
+        mil_wages = pd.read_hdf('temp/data.h5', 'mil_pay')
+        mil_wages = mil_wages.join(mil_pop)
+
+        mil_wages['mil_gc_wages'] = (mil_wages['mil_gc_pop'] * mil_wages['annual_pay_gq']).round()
+        mil_wages['mil_hh_wages'] = (mil_wages['mil_hh_pop'] * mil_wages['annual_pay_hp']).round()
+
+        mil_wages['multiplier'] = 0
+
+        mil_wages.loc[mil_wages.index.get_level_values('yr') > 2014, ['multiplier']] = (.01 * (mil_wages.index.get_level_values('yr') - 2014))
+            #pow(1.01, mil_wages.index.get_level_values('yr') - 2014)
+
+        mil_wages['mil_gc_wages'] = (mil_wages['mil_gc_wages'] + mil_wages['mil_gc_wages'] * mil_wages['multiplier'])
+        mil_wages['mil_hh_wages'] = (mil_wages['mil_hh_wages'] + mil_wages['mil_hh_wages'] * mil_wages['multiplier'])
+
+        mil_wages['military_income'] = (mil_wages['mil_gc_wages'] + mil_wages['mil_hh_wages']).round()
+
+        mil_wages.to_hdf('temp/data.h5', 'mil_income', mode='a')
+
+
+class PersonalIncome(luigi.Task):
+
+    @property
+    def priority(self):
+        return 2
+
+    def requires(self):
+        return {'hh_wage': HouseHoldWages(),
+                'mil_wages': MilWages()
+                }
+
+    def output(self):
+        return luigi.LocalTarget('temp/data.h5')
+
+    def run(self):
+        engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
+
+        hh_income = pd.read_hdf('temp/data.h5', 'hh_income')
+        mil_income = pd.read_hdf('temp/data.h5', 'mil_income')
+        ue_income = pd.read_hdf('temp/data.h5', 'ue_income')
+        inc = hh_income.join(mil_income)
+        inc = inc.join(ue_income)
+
+        inc['unearned_income'] = (inc['Interest'] + inc['Other'] + inc['Public_Assistance'] + inc['Retirement'] +
+                                  inc['Supplemental_Social_Security'] + inc['Social_Security']).round()
+
+        inc['personal_income'] = (inc['jobs_local_wages'] + inc['wf_outside_wages'] + inc['unearned_income'] +
+                                  inc['Selfemp_Income'] + inc['military_income']).round()
+
+        inc = inc[['labor_force', 'unemployed', 'work_force', 'work_force_outside',
+                    'work_force_local', 'jobs_local', 'jobs_total', 'jobs_external',
+                    'avg_wage', 'jobs_total_wages', 'jobs_local_wages', 'jobs_external_wages',
+                    'wf_outside_wages', 'military_income', 'unearned_income', 'Selfemp_Income', 'personal_income']]
+
         run_table = pd.read_hdf('temp/data.h5', 'run_id')
         run_id = run_table[0]
-        jobs['run_id'] = run_id
+        inc['run_id'] = run_id
 
-        jobs.to_sql(name='emp_summary', con=engine, schema='defm', if_exists='append', index=True)
+        inc.to_sql(name='emp_summary', con=engine, schema='defm', if_exists='append', index=True)
 
 if __name__ == '__main__':
     os.makedirs('temp')
-    luigi.run(main_task_cls=AverageWage)
+    luigi.run(main_task_cls=PersonalIncome)
     shutil.rmtree('temp')
 
 

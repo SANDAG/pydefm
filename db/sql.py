@@ -101,6 +101,17 @@ SELECT [yr]
   WHERE [householder_rate_id] = %s
       """
 
+dem_sim_rates = '''
+SELECT [demographic_simulation_id]
+      ,[base_population_id]
+      ,[migration_rate_id]
+      ,[birth_rate_id]
+      ,[death_rate_id]
+      ,[householder_rate_id]
+      ,[start_yr]
+      ,[end_yr]
+  FROM [isam].[demographic_rates].[demographic_scenarios]
+  '''
 inc_pop = """
 SELECT  age,
         race_ethn,
@@ -114,8 +125,17 @@ FROM    %s
 WHERE   run_id = %s and type = 'HHP'
 """
 
+inc_mil_gc_pop = """
+SELECT  age,
+        race_ethn,
+        sex,
+        persons,
+        yr
+FROM    %s
+WHERE   run_id = %s and type = 'MIL'
+"""
 
-inc_pop_mil = """
+inc_mil_hh_pop = """
 SELECT  age,
         r as race_ethn,
         sex,
@@ -170,7 +190,7 @@ SELECT [yr]
   '''
 
 in_commuting = '''
-SELECT [yr]
+SELECT TOP 41 [yr]
       ,[wh_whlh]
   FROM %s
   WHERE in_commuting_id = %s'''
@@ -195,6 +215,14 @@ SELECT [yr]
       ,[annual_pay]
   FROM %s
   WHERE sectoral_pay_id = %s'''
+
+mil_pay = '''
+SELECT yr
+      ,[annual_pay_hp]
+      ,[annual_pay_gq]
+  FROM %s
+  WHERE [military_pay_id] = %s'''
+
 
 max_run_id = '''
 SELECT max(id)
