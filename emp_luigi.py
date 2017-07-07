@@ -28,7 +28,6 @@ class EmpPopulation(luigi.Task):
 
             in_query = getattr(sql, 'max_run_id')
             db_run_id = pd.read_sql(in_query, engine, index_col=None)
-            print db_run_id['max'].iloc[0]
             # db_run_id = log.new_run(name='emp_run_log', run_id=db_run_id['max'].iloc[0])
 
             run_id = pd.Series([db_run_id['max'].iloc[0]])
@@ -73,7 +72,6 @@ class EmpPopulation(luigi.Task):
             pop.loc[pop['age'].isin(list(range(85, 103))), ['age_cat']] = '85_99'
 
             pop = pd.DataFrame(pop['persons'].groupby([pop['yr'], pop['age_cat'], pop['sex'], pop['race_ethn']]).sum())
-            print pop.head()
             pop.to_hdf('temp/data.h5', 'pop', mode='a')
 
 
@@ -115,7 +113,6 @@ class MilPopulation(luigi.Task):
             pop = pop.reset_index(drop=False)
 
             pop = pd.DataFrame(pop[['mil_gc_pop', 'mil_hh_pop']].groupby([pop['yr']]).sum())
-            print pop.head()
             pop.to_hdf('temp/data.h5', 'mil_pop', mode='a')
 
 
@@ -146,9 +143,6 @@ class LaborForce(luigi.Task):
         labor_force = pop.join(lfpr)
         labor_force['labor_force'] = (labor_force['persons'] * labor_force['lfpr']).round()
 
-        labor_force2 = labor_force.reset_index(drop=False)
-
-        print pd.DataFrame(labor_force2[['persons', 'labor_force']].groupby([labor_force2['yr']]).sum())
         labor_force = labor_force.iloc[~labor_force.index.get_level_values('age_cat').isin(['00_04', '05_09', '10_14'])]
         labor_force.to_hdf('temp/data.h5', 'labor_force', mode='a')
 
@@ -190,7 +184,6 @@ class WorkForce(luigi.Task):
         computed_ur['computed_ur'] = (computed_ur['unemployed'] / computed_ur['labor_force'])
         computed_ur = computed_ur.join(yearly_ur)
         computed_ur['adjustment'] = (computed_ur['ur1'] / computed_ur['computed_ur'])
-        print computed_ur
 
         work_force = work_force.join(computed_ur['adjustment'])
         work_force['unemployed'] = (work_force['unemployed'] * work_force['adjustment']).round()
@@ -224,7 +217,6 @@ class LocalWorkForce(luigi.Task):
         work_force['work_force_outside'] = (work_force['work_force'] * work_force['wtlh_lh']).round()
         work_force['work_force_local'] = (work_force['work_force'] - work_force['work_force_outside']).round()
         work_force.to_hdf('temp/data.h5', 'work_force_local', mode='a')
-        print work_force
 
 
 class Jobs(luigi.Task):
@@ -246,7 +238,6 @@ class Jobs(luigi.Task):
         work_force_local['jobs_total'] = (work_force_local['jobs_local'] * work_force_local['wh_whlh']).round()
         work_force_local['jobs_external'] = (work_force_local['jobs_total'] - work_force_local['jobs_local']).round()
 
-        print work_force_local.head()
         # pull information from here
         work_force_local.to_hdf('temp/data.h5', 'jobs', mode='a')
 
@@ -260,23 +251,27 @@ class SectoralPay(luigi.Task):
         return luigi.LocalTarget('temp/data.h5')
 
     def run(self):
+        engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
+
         sectoral_share = extract.create_df('sectoral_share', 'sectoral_share_table', index=['yr', 'sandag_sector'])
         sectoral_pay = extract.create_df('sectoral_pay', 'sectoral_pay_table', index=['yr', 'sandag_sector'])
 
         jobs = pd.read_hdf('temp/data.h5', 'jobs')
 
-        print sectoral_share
-
         jobs = jobs[['jobs_total']]
-        print jobs
         jobs = jobs.join(sectoral_share, how='right')
         jobs['sector_jobs'] = (jobs['jobs_total'] * jobs['share']).round()
         jobs = jobs.drop(['jobs_total'], 1)
 
         jobs = jobs.join(sectoral_pay)
-        jobs['tot_ann_job_pay'] = (jobs['sector_jobs']* jobs['annual_pay']).round()
+        jobs['tot_ann_job_pay'] = (jobs['sector_jobs'] * jobs['annual_pay']).round()
 
         jobs.to_hdf('temp/data.h5', 'sectoral', mode='a')
+        run_table = pd.read_hdf('temp/data.h5', 'run_id')
+        run_id = run_table[0]
+        jobs['run_id'] = run_id
+
+        jobs.to_sql(name='sectors', con=engine, schema='defm', if_exists='append', index=True)
 
 
 class MilPay(luigi.Task):
@@ -335,8 +330,11 @@ class MilWages(luigi.Task):
 
         mil_wages['multiplier'] = 0
 
-        mil_wages.loc[mil_wages.index.get_level_values('yr') > 2014, ['multiplier']] = (.01 * (mil_wages.index.get_level_values('yr') - 2014))
-            #pow(1.01, mil_wages.index.get_level_values('yr') - 2014)
+        aigrm_table = extract.create_df('aigrm', 'aigrm_table', index=None)
+
+        mil_wages.loc[mil_wages.index.get_level_values('yr') > 2014, ['multiplier']] = (aigrm_table.aigrm[0] *
+                                                                                        (mil_wages.index.get_level_values('yr') - 2014))
+        # pow(1.01, mil_wages.index.get_level_values('yr') - 2014)
 
         mil_wages['mil_gc_wages'] = (mil_wages['mil_gc_wages'] + mil_wages['mil_gc_wages'] * mil_wages['multiplier'])
         mil_wages['mil_hh_wages'] = (mil_wages['mil_hh_wages'] + mil_wages['mil_hh_wages'] * mil_wages['multiplier'])
@@ -385,6 +383,7 @@ class PersonalIncome(luigi.Task):
         inc['run_id'] = run_id
 
         inc.to_sql(name='emp_summary', con=engine, schema='defm', if_exists='append', index=True)
+
 
 if __name__ == '__main__':
     os.makedirs('temp')

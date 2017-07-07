@@ -43,6 +43,7 @@ def create_df(data_type, db_table, pivot=False, index=['age', 'race_ethn', 'sex'
         df_sql_result = util.apply_pivot(df_sql_result)
 
     # create MultiIndex on cohort attributes
-    df_sql_result = df_sql_result.set_index(index)
+    if index is not None:
+        df_sql_result = df_sql_result.set_index(index)
 
     return df_sql_result

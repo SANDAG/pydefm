@@ -228,3 +228,13 @@ max_run_id = '''
 SELECT max(id)
   FROM defm.runs
 '''
+
+aigr = '''
+SELECT [aigr]
+  FROM %s
+  WHERE aigr_id = %s'''
+
+aigrm = '''
+SELECT [aigrm]
+  FROM %s
+  WHERE aigrm_id = %s'''

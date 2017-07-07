@@ -80,14 +80,19 @@ class IncomeByType(luigi.Task):
 
         pop = pd.read_hdf('temp/data.h5', 'pop')
         inc_type_rates = extract.create_df('inc_shares', 'inc_shares_table', index=['yr', 'age_cat'])
+
         inc_type_rates = inc_type_rates.join(pop)
         inc_type_rates['totals'] = (inc_type_rates['income'] * inc_type_rates['persons'] * inc_type_rates['share'])
         inc_type_rates = inc_type_rates.reset_index(drop=False)
 
         inc_type_rates['multiplier'] = 0
 
-        inc_type_rates.loc[inc_type_rates['yr'] > 2014, ['multiplier']] = (.01 * (inc_type_rates['yr'] - 2014))
-            #pow(1.01, mil_wages.index.get_level_values('yr') - 2014)
+        aigr_table = extract.create_df('aigr', 'aigr_table', index=None)
+
+        inc_type_rates.loc[(inc_type_rates['yr'] > 2014) & (inc_type_rates['income_type'] != 'semp'),
+                           ['multiplier']] = (aigr_table.aigr[0] * (inc_type_rates['yr'] - 2014))
+
+        # pow(1.01, mil_wages.index.get_level_values('yr') - 2014)
 
         inc_type_rates['totals'] = (inc_type_rates['totals'] + inc_type_rates['totals'] * inc_type_rates['multiplier'])
 
