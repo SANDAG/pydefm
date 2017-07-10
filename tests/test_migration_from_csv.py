@@ -40,6 +40,22 @@ def pop_dead():
 def pop_non_mig():
     return pd.read_csv('tests/data/migration/non_migrating_population.csv',index_col=[0,1,2],dtype = {'mig_Dout':  np.float64,'mig_Fout':  np.float64,'non_mig_pop': np.float64})
 
+
+@pytest.fixture
+def survived_pop():
+    return pd.read_csv('tests/data/deaths/non_migrating_survived_population.csv',index_col=[0,1,2],dtype = {'mig_Dout':  np.float64,
+                                            'mig_Fout':  np.float64,
+                                            'non_mig_pop': np.float64,
+                                            'mig_Fout':  np.float64,
+                                            'non_mig_pop': np.float64,
+                                            'deaths':  np.float64,
+                                            'non_mig_survived_pop': np.float64})
+
+@pytest.fixture
+def non_mig_survived_aged_pop():
+    return pd.read_csv('tests/data/aged/non_migrating_survived__aged_population.csv',index_col=[0,1,2],dtype = {'non_mig_survived_pop': np.float64})
+
+
 # @pytest.fixture
 # def pop_out():
 #     return pd.read_csv('tests/data/pop_Dout_Fout.csv',index_col=[0,1,2])
@@ -96,3 +112,10 @@ def test_dead_population(pop_w_death_rates, pop_dead):
 def test_non_migrating_survived_pop(pop_non_mig,pop_dead,expected):
     result = compute.non_migrating_survived_pop(pop_non_mig,pop_dead)
     tm.assert_frame_equal(result, expected)
+
+
+def test_aged_pop(survived_pop, non_mig_survived_aged_pop):
+    result = compute.aged_pop(survived_pop)
+    result.to_csv('tests/data/aged_result.csv')
+    result.dtypes
+    tm.assert_frame_equal(result, non_mig_survived_aged_pop)

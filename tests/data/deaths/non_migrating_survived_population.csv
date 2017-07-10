@@ -2,6 +2,7 @@ age,race_ethn,sex,type,mildep,persons,households,mig_Dout,mig_Fout,non_mig_pop,d
 0,B,F,OTH,N,1,0,0,0,1,0,1
 0,B,M,INS,N,3,0,0,0,3,0,3
 0,H,M,MIL,N,0,0,0,0,0,0,0
+0,O,F,HHP,N,1041,0,60,0,981,4,977
 0,W,F,HHP,Y,386,0,0,0,386,0,386
 10,O,F,INS,N,0,0,0,0,0,0,0
 10,O,F,OTH,N,3,0,0,0,3,0,3
