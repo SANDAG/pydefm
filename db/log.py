@@ -9,7 +9,7 @@ from pysandag.database import get_connection_string
 import os
 
 
-def new_run(name='runs'):
+def new_run(name='runs', run_id=None):
     Base = declarative_base()
     table_name = name
     class Run(Base):
@@ -46,11 +46,11 @@ def new_run(name='runs'):
 
     # Insert versions in database
     model_run = Run(
-        base_rate_version=rate_versions['population'],
-        birth_rate_version=rate_versions['birth'],
-        death_rate_version=rate_versions['death'],
-        migration_rate_version=rate_versions['migration'],
-        householder_rate_version=rate_versions['householder'])
+        base_rate_version=1,
+        birth_rate_version=1,
+        death_rate_version=1,
+        migration_rate_version=1,
+        householder_rate_version=1)
 
     session.add(model_run)
     session.commit()

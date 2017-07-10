@@ -36,8 +36,17 @@ class EmpPopulation(luigi.Task):
             rate_versions = util.yaml_to_dict('model_config.yml', 'rate_versions')
             tables = util.yaml_to_dict('model_config.yml', 'db_tables')
 
+            dem_sim_rates = extract.create_df('dem_sim_rates', 'dem_sim_rates_table',
+                                              rate_id=rate_versions['dem_sim_rates'], index=None)
+
+            dem_sim_rates.to_hdf('temp/data.h5', 'dem_sim_rates', mode='a')
+
+            econ_sim_rates = extract.create_df('econ_sim_rates', 'econ_sim_rates_table',
+                                               rate_id=rate_versions['econ_sim_rates'], index=None)
+            econ_sim_rates.to_hdf('temp/data.h5', 'econ_sim_rates', mode='a')
+
             in_query = getattr(sql, 'inc_pop') % (tables['inc_pop_table'], run_id[0])
-            in_query2 = getattr(sql, 'inc_mil_hh_pop') % (tables['population_table'], rate_versions['population'])
+            in_query2 = getattr(sql, 'inc_mil_hh_pop') % (tables['population_table'], dem_sim_rates.base_population_id[0])
 
             pop = pd.read_sql(in_query, engine, index_col=['age', 'race_ethn', 'sex', 'mildep'])
             pop_mil = pd.read_sql(in_query2, sql_in_engine, index_col=['age', 'race_ethn', 'sex', 'mildep'])
@@ -78,7 +87,7 @@ class EmpPopulation(luigi.Task):
 class MilPopulation(luigi.Task):
 
     def requires(self):
-        return None
+        return EmpPopulation()
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -95,11 +104,12 @@ class MilPopulation(luigi.Task):
             run_id = pd.Series([db_run_id['max'].iloc[0]])
             run_id.to_hdf('temp/data.h5', 'run_id',  mode='a')
 
-            rate_versions = util.yaml_to_dict('model_config.yml', 'rate_versions')
             tables = util.yaml_to_dict('model_config.yml', 'db_tables')
 
+            dem_sim_rates = pd.read_hdf('temp/data.h5', 'dem_sim_rates')
+
             in_query = getattr(sql, 'inc_mil_gc_pop') % (tables['inc_pop_table'], run_id[0])
-            in_query2 = getattr(sql, 'inc_mil_hh_pop') % (tables['population_table'], rate_versions['population'])
+            in_query2 = getattr(sql, 'inc_mil_hh_pop') % (tables['population_table'], dem_sim_rates.base_population_id[0])
 
             pop = pd.read_sql(in_query, engine, index_col=['age', 'race_ethn', 'sex'])
             pop_mil = pd.read_sql(in_query2, sql_in_engine, index_col=['age', 'race_ethn', 'sex'])
@@ -125,7 +135,8 @@ class LaborForceParticipationRates(luigi.Task):
         return luigi.LocalTarget('temp/data.h5')
 
     def run(self):
-        lfpr = extract.create_df('lfp_rates', 'lfp_rates_table', index=['yr', 'age_cat', 'sex', 'race_ethn'])
+        econ_sim_rates = pd.read_hdf('temp/data.h5', 'econ_sim_rates')
+        lfpr = extract.create_df('lfp_rates', 'lfp_rates_table', rate_id=econ_sim_rates.lfpr_id[0], index=['yr', 'age_cat', 'sex', 'race_ethn'])
         lfpr.to_hdf('temp/data.h5', 'lfpr', mode='a')
 
 
@@ -156,9 +167,11 @@ class CohortUrRate(luigi.Task):
         return luigi.LocalTarget('temp/data.h5')
 
     def run(self):
-        cohort_ur = extract.create_df('cohort_ur', 'cohort_ur_table', index=['yr', 'age_cat', 'sex', 'race_ethn'])
+        econ_sim_rates = pd.read_hdf('temp/data.h5', 'econ_sim_rates')
+
+        cohort_ur = extract.create_df('cohort_ur', 'cohort_ur_table', rate_id=econ_sim_rates.ur1_id[0], index=['yr', 'age_cat', 'sex', 'race_ethn'])
         cohort_ur.to_hdf('temp/data.h5', 'cohort_ur', mode='a')
-        yearly_ur = extract.create_df('yearly_ur', 'yearly_ur_table', index=['yr'])
+        yearly_ur = extract.create_df('yearly_ur', 'yearly_ur_table', rate_id=econ_sim_rates.ur2_id[0], index=['yr'])
         yearly_ur.to_hdf('temp/data.h5', 'yearly_ur', mode='a')
 
 
@@ -209,7 +222,9 @@ class LocalWorkForce(luigi.Task):
         return luigi.LocalTarget('temp/data.h5')
 
     def run(self):
-        out_commuting = extract.create_df('out_commuting', 'out_commuting_table', index=['yr'])
+        econ_sim_rates = pd.read_hdf('temp/data.h5', 'econ_sim_rates')
+
+        out_commuting = extract.create_df('out_commuting', 'out_commuting_table', rate_id=econ_sim_rates.oc_id[0], index=['yr'])
         work_force = pd.read_hdf('temp/data.h5', 'work_force')
         work_force = work_force.reset_index(drop=False)
         work_force = pd.DataFrame(work_force[['labor_force', 'unemployed', 'work_force']].groupby([work_force['yr']]).sum())
@@ -228,8 +243,9 @@ class Jobs(luigi.Task):
         return luigi.LocalTarget('temp/data.h5')
 
     def run(self):
-        local_jobs = extract.create_df('local_jobs', 'local_jobs_table', index=['yr'])
-        in_commuting = extract.create_df('in_commuting', 'in_commuting_table', index=['yr'])
+        econ_sim_rates = pd.read_hdf('temp/data.h5', 'econ_sim_rates')
+        local_jobs = extract.create_df('local_jobs', 'local_jobs_table', rate_id=econ_sim_rates.lj_id[0], index=['yr'])
+        in_commuting = extract.create_df('in_commuting', 'in_commuting_table',rate_id=econ_sim_rates.ic_id[0], index=['yr'])
 
         work_force_local = pd.read_hdf('temp/data.h5', 'work_force_local')
         work_force_local = work_force_local.join(local_jobs)
@@ -252,9 +268,10 @@ class SectoralPay(luigi.Task):
 
     def run(self):
         engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
+        econ_sim_rates = pd.read_hdf('temp/data.h5', 'econ_sim_rates')
 
-        sectoral_share = extract.create_df('sectoral_share', 'sectoral_share_table', index=['yr', 'sandag_sector'])
-        sectoral_pay = extract.create_df('sectoral_pay', 'sectoral_pay_table', index=['yr', 'sandag_sector'])
+        sectoral_share = extract.create_df('sectoral_share', 'sectoral_share_table', rate_id=econ_sim_rates.ss_id[0], index=['yr', 'sandag_sector'])
+        sectoral_pay = extract.create_df('sectoral_pay', 'sectoral_pay_table', rate_id=econ_sim_rates.sp_id[0], index=['yr', 'sandag_sector'])
 
         jobs = pd.read_hdf('temp/data.h5', 'jobs')
 
@@ -283,7 +300,9 @@ class MilPay(luigi.Task):
         return luigi.LocalTarget('temp/data.h5')
 
     def run(self):
-        mil_pay = extract.create_df('mil_pay', 'mil_pay_table', index=['yr'])
+        econ_sim_rates = pd.read_hdf('temp/data.h5', 'econ_sim_rates')
+
+        mil_pay = extract.create_df('mil_pay', 'mil_pay_table', rate_id=econ_sim_rates.mp_id[0], index=['yr'])
         mil_pay.to_hdf('temp/data.h5', 'mil_pay', mode='a')
 
 
@@ -321,6 +340,8 @@ class MilWages(luigi.Task):
         return luigi.LocalTarget('temp/data.h5')
 
     def run(self):
+        econ_sim_rates = pd.read_hdf('temp/data.h5', 'econ_sim_rates')
+
         mil_pop = pd.read_hdf('temp/data.h5', 'mil_pop')
         mil_wages = pd.read_hdf('temp/data.h5', 'mil_pay')
         mil_wages = mil_wages.join(mil_pop)
@@ -330,7 +351,7 @@ class MilWages(luigi.Task):
 
         mil_wages['multiplier'] = 0
 
-        aigrm_table = extract.create_df('aigrm', 'aigrm_table', index=None)
+        aigrm_table = extract.create_df('aigrm', 'aigrm_table', rate_id=econ_sim_rates.aigrm_id[0],index=None)
 
         mil_wages.loc[mil_wages.index.get_level_values('yr') > 2014, ['multiplier']] = (aigrm_table.aigrm[0] *
                                                                                         (mil_wages.index.get_level_values('yr') - 2014))

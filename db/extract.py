@@ -5,7 +5,7 @@ from db import sql
 from forecast import util
 
 
-def create_df(data_type, db_table, pivot=False, index=['age', 'race_ethn', 'sex']):
+def create_df(data_type, db_table, pivot=False, rate_id = 101, index=['age', 'race_ethn', 'sex']):
     """
     Create pandas DataFrame from database SQL query to select base population
     or rate versions to be used in model.
@@ -27,12 +27,11 @@ def create_df(data_type, db_table, pivot=False, index=['age', 'race_ethn', 'sex'
     sql_in_engine = create_engine(db_connection_string)
 
     # retrieve rate versions for current model and database table names to query
-    rate_versions = util.yaml_to_dict('model_config.yml', 'rate_versions')
     tables = util.yaml_to_dict('model_config.yml', 'db_tables')
 
     # build query from sql.py
     # use database table name and rate versions from .yml file
-    in_query = getattr(sql,data_type) % (tables[db_table], rate_versions[data_type])
+    in_query = getattr(sql,data_type) % (tables[db_table], rate_id)
 
     # pandas DataFrame from query
     df_sql_result = pd.read_sql(in_query, sql_in_engine)
