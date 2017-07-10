@@ -102,15 +102,15 @@ SELECT [yr]
       """
 
 dem_sim_rates = '''
-SELECT [demographic_simulation_id]
-      ,[base_population_id]
+SELECT [base_population_id]
       ,[migration_rate_id]
       ,[birth_rate_id]
       ,[death_rate_id]
       ,[householder_rate_id]
       ,[start_yr]
       ,[end_yr]
-  FROM [isam].[demographic_rates].[demographic_scenarios]
+  FROM %s
+  WHERE demographic_simulation_id = %s
   '''
 inc_pop = """
 SELECT  age,
@@ -190,7 +190,7 @@ SELECT [yr]
   '''
 
 in_commuting = '''
-SELECT TOP 41 [yr]
+SELECT [yr]
       ,[wh_whlh]
   FROM %s
   WHERE in_commuting_id = %s'''
@@ -238,3 +238,22 @@ aigrm = '''
 SELECT [aigrm]
   FROM %s
   WHERE aigrm_id = %s'''
+
+econ_sim_rates = '''
+SELECT [ur1_id]
+      ,[ur2_id]
+      ,[lfpr_id]
+      ,[ss_id]
+      ,[sp_id]
+      ,[oc_id]
+      ,[ic_id]
+      ,[lj_id]
+      ,[inc1_id]
+      ,[inc2_id]
+      ,[trs_id]
+      ,[mp_id]
+      ,[aigr_id]
+      ,[aigrm_id]
+      ,[se1_id]
+  FROM %s
+  WHERE economic_simulation_id = %s'''

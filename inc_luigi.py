@@ -32,12 +32,20 @@ class IncPopulation(luigi.Task):
 
             run_id = pd.Series([db_run_id['max'].iloc[0]])
             run_id.to_hdf('temp/data.h5', 'run_id',  mode='a')
-
             rate_versions = util.yaml_to_dict('model_config.yml', 'rate_versions')
+
+            dem_sim_rates = extract.create_df('dem_sim_rates', 'dem_sim_rates_table',
+                                              rate_id=rate_versions['dem_sim_rates'], index=None)
+            dem_sim_rates.to_hdf('temp/data.h5', 'dem_sim_rates', mode='a')
+
+            econ_sim_rates = extract.create_df('econ_sim_rates', 'econ_sim_rates_table',
+                                              rate_id=rate_versions['econ_sim_rates'], index=None)
+            econ_sim_rates.to_hdf('temp/data.h5', 'econ_sim_rates', mode='a')
+
             tables = util.yaml_to_dict('model_config.yml', 'db_tables')
 
             in_query = getattr(sql, 'inc_pop') % (tables['inc_pop_table'], run_id[0])
-            in_query2 = getattr(sql, 'inc_mil_hh_pop') % (tables['population_table'], rate_versions['population'])
+            in_query2 = getattr(sql, 'inc_mil_hh_pop') % (tables['population_table'], dem_sim_rates.base_population_id[0])
 
             pop = pd.read_sql(in_query, engine, index_col=['age', 'race_ethn', 'sex', 'mildep'])
             pop_mil = pd.read_sql(in_query2, sql_in_engine, index_col=['age', 'race_ethn', 'sex', 'mildep'])
@@ -77,9 +85,10 @@ class IncomeByType(luigi.Task):
 
     def run(self):
         engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
+        econ_sim_rates = pd.read_hdf('temp/data.h5', 'econ_sim_rates')
 
         pop = pd.read_hdf('temp/data.h5', 'pop')
-        inc_type_rates = extract.create_df('inc_shares', 'inc_shares_table', index=['yr', 'age_cat'])
+        inc_type_rates = extract.create_df('inc_shares', 'inc_shares_table', rate_id=econ_sim_rates.inc1_id[0], index=['yr', 'age_cat'])
 
         inc_type_rates = inc_type_rates.join(pop)
         inc_type_rates['totals'] = (inc_type_rates['income'] * inc_type_rates['persons'] * inc_type_rates['share'])
@@ -87,10 +96,9 @@ class IncomeByType(luigi.Task):
 
         inc_type_rates['multiplier'] = 0
 
-        aigr_table = extract.create_df('aigr', 'aigr_table', index=None)
+        aigr_table = extract.create_df('aigr', 'aigr_table', rate_id=econ_sim_rates.aigr_id[0], index=None)
 
-        inc_type_rates.loc[(inc_type_rates['yr'] > 2014) & (inc_type_rates['income_type'] != 'semp'),
-                           ['multiplier']] = (aigr_table.aigr[0] * (inc_type_rates['yr'] - 2014))
+        inc_type_rates.loc[inc_type_rates['yr'] > 2014, ['multiplier']] = (aigr_table.aigr[0] * (inc_type_rates['yr'] - 2014))
 
         # pow(1.01, mil_wages.index.get_level_values('yr') - 2014)
 

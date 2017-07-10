@@ -32,7 +32,14 @@ class Population(luigi.Task):
             db_run_id = log.new_run()
             run_id = pd.Series([db_run_id])
             run_id.to_hdf('temp/data.h5', 'run_id',  mode='a')
-            pop = extract.create_df('population', 'population_table')
+            rate_versions = util.yaml_to_dict('model_config.yml', 'rate_versions')
+
+            dem_sim_rates = extract.create_df('dem_sim_rates', 'dem_sim_rates_table',
+                                              rate_id=rate_versions['dem_sim_rates'], index=None)
+
+            dem_sim_rates.to_hdf('temp/data.h5', 'dem_sim_rates',  mode='a')
+
+            pop = extract.create_df('population', 'population_table', rate_id=dem_sim_rates.base_population_id[0])
             pop.to_hdf('temp/data.h5', 'pop', format='table', mode='a')
 
             pop2 = pop[(pop['type'] == 'HHP')]
@@ -74,7 +81,8 @@ class InMigrationRates(luigi.Task):
         return luigi.LocalTarget('temp/data.h5')
 
     def run(self):
-        mig_rates = extract.create_df('migration', 'migration_rate_table')
+        dem_sim_rates = pd.read_hdf('temp/data.h5', 'dem_sim_rates')
+        mig_rates = extract.create_df('migration', 'migration_rate_table', rate_id=dem_sim_rates.migration_rate_id[0])
         mig_rates = mig_rates[['yr', 'DIN', 'FIN']]
         mig_rates.to_hdf('temp/data.h5', 'in_mig_rates', format='table', mode='a')
 
@@ -89,7 +97,8 @@ class OutMigrationRates(luigi.Task):
         return luigi.LocalTarget('temp/data.h5')
 
     def run(self):
-        mig_rates = extract.create_df('migration', 'migration_rate_table')
+        dem_sim_rates = pd.read_hdf('temp/data.h5', 'dem_sim_rates')
+        mig_rates = extract.create_df('migration', 'migration_rate_table', rate_id=dem_sim_rates.migration_rate_id[0])
         mig_rates = mig_rates[['yr', 'DOUT', 'FOUT']]
         mig_rates.to_hdf('temp/data.h5', 'out_mig_rates', format='table', mode='a')
 
@@ -104,7 +113,8 @@ class DeathRates(luigi.Task):
         return luigi.LocalTarget('temp/data.h5')
 
     def run(self):
-        death_rates = extract.create_df('death', 'death_rate_table')
+        dem_sim_rates = pd.read_hdf('temp/data.h5', 'dem_sim_rates')
+        death_rates = extract.create_df('death', 'death_rate_table', rate_id=dem_sim_rates.death_rate_id[0])
         death_rates.to_hdf('temp/data.h5', 'death_rates', format='table', mode='a')
 
 
@@ -118,7 +128,8 @@ class BirthRates(luigi.Task):
         return luigi.LocalTarget('temp/data.h5')
 
     def run(self):
-        birth_rates = extract.create_df('birth', 'birth_rate_table')
+        dem_sim_rates = pd.read_hdf('temp/data.h5', 'dem_sim_rates')
+        birth_rates = extract.create_df('birth', 'birth_rate_table', rate_id=dem_sim_rates.birth_rate_id[0])
         birth_rates.to_hdf('temp/data.h5', 'birth_rates', format='table', mode='a')
 
 
@@ -239,7 +250,11 @@ class NewBornPopulation(luigi.Task):
         pop = pop[(pop['type'] == 'HHP') & (pop['mildep'] == 'N')]
         birth_rates = compute.rates_for_yr(pop, birth_rates, self.year)
         birth_rates = birth_rates[(birth_rates['yr'] == self.year)]
-        random_numbers = extract.create_df('random_numbers', 'random_numbers_table')
+
+        rate_versions = util.yaml_to_dict('model_config.yml', 'rate_versions')
+
+        random_numbers = extract.create_df('random_numbers', 'random_numbers_table', rate_id=rate_versions['random_numbers'])
+
         random_numbers = random_numbers[(random_numbers['yr'] == self.year)]
         random_numbers = random_numbers[['random_number']]
         births_per_cohort = compute.births_all(birth_rates, self.year, pop_col='non_mig_pop', rand_df=random_numbers)
@@ -342,7 +357,9 @@ class FinalPopulation(luigi.Task):
 
         pop = cp.final_population(pop)
 
-        householder = extract.create_df('householder', 'householder_table')
+        dem_sim_rates = pd.read_hdf('temp/data.h5', 'dem_sim_rates')
+
+        householder = extract.create_df('householder', 'householder_table', rate_id=dem_sim_rates.householder_rate_id[0])
         householder = householder[(householder['yr'] == self.year)]
         householder = householder.drop(['yr'], 1)
 
@@ -362,7 +379,7 @@ class ExportTables(luigi.Task):
         return 10000 - self.year
 
     def requires(self):
-        return FinalPopulation(self.year)
+        return FinalPopulation(year=self.year)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
