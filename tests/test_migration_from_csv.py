@@ -53,7 +53,7 @@ def survived_pop():
 
 @pytest.fixture
 def non_mig_survived_aged_pop():
-    return pd.read_csv('tests/data/aged/non_migrating_survived__aged_population.csv',index_col=[0,1,2],dtype = {'non_mig_survived_pop': np.float64})
+    return pd.read_csv('tests/data/aged/non_migrating_survived_aged_population.csv',index_col=[0,1,2],dtype = {'non_mig_survived_pop': np.float64})
 
 
 # @pytest.fixture
