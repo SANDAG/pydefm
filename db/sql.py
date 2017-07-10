@@ -257,3 +257,16 @@ SELECT [ur1_id]
       ,[se1_id]
   FROM %s
   WHERE economic_simulation_id = %s'''
+
+dem_sim_ids = '''
+SELECT [demographic_simulation_id]
+  FROM %s
+  WHERE demographic_simulation_id != %s
+  ORDER BY [demographic_simulation_id]'''
+
+
+econ_sim_ids = '''
+SELECT [economic_simulation_id]
+  FROM %s
+  WHERE economic_simulation_id != %s
+  ORDER BY [economic_simulation_id]'''

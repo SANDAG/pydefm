@@ -13,6 +13,8 @@ from db import log
 
 
 class IncPopulation(luigi.Task):
+    econ_id = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
         return None
@@ -32,14 +34,13 @@ class IncPopulation(luigi.Task):
 
             run_id = pd.Series([db_run_id['max'].iloc[0]])
             run_id.to_hdf('temp/data.h5', 'run_id',  mode='a')
-            rate_versions = util.yaml_to_dict('model_config.yml', 'rate_versions')
 
             dem_sim_rates = extract.create_df('dem_sim_rates', 'dem_sim_rates_table',
-                                              rate_id=rate_versions['dem_sim_rates'], index=None)
+                                              rate_id=self.dem_id, index=None)
             dem_sim_rates.to_hdf('temp/data.h5', 'dem_sim_rates', mode='a')
 
             econ_sim_rates = extract.create_df('econ_sim_rates', 'econ_sim_rates_table',
-                                              rate_id=rate_versions['econ_sim_rates'], index=None)
+                                              rate_id=self.econ_id, index=None)
             econ_sim_rates.to_hdf('temp/data.h5', 'econ_sim_rates', mode='a')
 
             tables = util.yaml_to_dict('model_config.yml', 'db_tables')
@@ -72,13 +73,15 @@ class IncPopulation(luigi.Task):
 
 
 class IncomeByType(luigi.Task):
+    econ = luigi.Parameter()
+    dem = luigi.Parameter()
 
     @property
     def priority(self):
         return 3
 
     def requires(self):
-        return IncPopulation()
+        return IncPopulation(econ_id=self.econ, dem_id=self.dem)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -133,5 +136,5 @@ class IncomeByType(luigi.Task):
 
 if __name__ == '__main__':
     os.makedirs('temp')
-    luigi.run(main_task_cls=IncomeByType)
+    luigi.run(main_task_cls=IncomeByType, cmdline_args=['--dem=1005', '--econ=1002'])
     shutil.rmtree('temp')

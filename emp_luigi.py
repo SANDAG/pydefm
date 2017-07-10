@@ -13,6 +13,8 @@ from db import log
 
 
 class EmpPopulation(luigi.Task):
+    econ_id = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
         return None
@@ -33,16 +35,14 @@ class EmpPopulation(luigi.Task):
             run_id = pd.Series([db_run_id['max'].iloc[0]])
             run_id.to_hdf('temp/data.h5', 'run_id',  mode='a')
 
-            rate_versions = util.yaml_to_dict('model_config.yml', 'rate_versions')
             tables = util.yaml_to_dict('model_config.yml', 'db_tables')
 
             dem_sim_rates = extract.create_df('dem_sim_rates', 'dem_sim_rates_table',
-                                              rate_id=rate_versions['dem_sim_rates'], index=None)
-
+                                              rate_id=self.dem_id, index=None)
             dem_sim_rates.to_hdf('temp/data.h5', 'dem_sim_rates', mode='a')
 
             econ_sim_rates = extract.create_df('econ_sim_rates', 'econ_sim_rates_table',
-                                               rate_id=rate_versions['econ_sim_rates'], index=None)
+                                               rate_id=self.econ_id, index=None)
             econ_sim_rates.to_hdf('temp/data.h5', 'econ_sim_rates', mode='a')
 
             in_query = getattr(sql, 'inc_pop') % (tables['inc_pop_table'], run_id[0])
@@ -85,9 +85,11 @@ class EmpPopulation(luigi.Task):
 
 
 class MilPopulation(luigi.Task):
+    econ_id = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return EmpPopulation()
+        return EmpPopulation(econ_id=self.econ_id, dem_id=self.dem_id)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -127,9 +129,11 @@ class MilPopulation(luigi.Task):
 
 
 class LaborForceParticipationRates(luigi.Task):
+    econ_id = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return EmpPopulation()
+        return EmpPopulation(econ_id=self.econ_id, dem_id=self.dem_id)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -141,9 +145,11 @@ class LaborForceParticipationRates(luigi.Task):
 
 
 class LaborForce(luigi.Task):
+    econ_id = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return LaborForceParticipationRates()
+        return LaborForceParticipationRates(econ_id=self.econ_id, dem_id=self.dem_id)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -159,9 +165,11 @@ class LaborForce(luigi.Task):
 
 
 class CohortUrRate(luigi.Task):
+    econ_id = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return LaborForce()
+        return LaborForce(econ_id=self.econ_id, dem_id=self.dem_id)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -176,9 +184,11 @@ class CohortUrRate(luigi.Task):
 
 
 class WorkForce(luigi.Task):
+    econ_id = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return CohortUrRate()
+        return CohortUrRate(econ_id=self.econ_id, dem_id=self.dem_id)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -214,9 +224,11 @@ class WorkForce(luigi.Task):
 
 
 class LocalWorkForce(luigi.Task):
+    econ_id = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return WorkForce()
+        return WorkForce(econ_id=self.econ_id, dem_id=self.dem_id)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -235,9 +247,11 @@ class LocalWorkForce(luigi.Task):
 
 
 class Jobs(luigi.Task):
+    econ_id = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return LocalWorkForce()
+        return LocalWorkForce(econ_id=self.econ_id, dem_id=self.dem_id)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -259,9 +273,11 @@ class Jobs(luigi.Task):
 
 
 class SectoralPay(luigi.Task):
+    econ_id = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return Jobs()
+        return Jobs(econ_id=self.econ_id, dem_id=self.dem_id)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -292,9 +308,11 @@ class SectoralPay(luigi.Task):
 
 
 class MilPay(luigi.Task):
+    econ_id = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return MilPopulation()
+        return MilPopulation(econ_id=self.econ_id, dem_id=self.dem_id)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -307,9 +325,11 @@ class MilPay(luigi.Task):
 
 
 class HouseHoldWages(luigi.Task):
+    econ_id = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return SectoralPay()
+        return SectoralPay(econ_id=self.econ_id, dem_id=self.dem_id)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -332,9 +352,11 @@ class HouseHoldWages(luigi.Task):
 
 
 class MilWages(luigi.Task):
+    econ_id = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return MilPay()
+        return MilPay(econ_id=self.econ_id, dem_id=self.dem_id)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -366,14 +388,16 @@ class MilWages(luigi.Task):
 
 
 class PersonalIncome(luigi.Task):
+    econ = luigi.Parameter()
+    dem = luigi.Parameter()
 
     @property
     def priority(self):
         return 2
 
     def requires(self):
-        return {'hh_wage': HouseHoldWages(),
-                'mil_wages': MilWages()
+        return {'hh_wage': HouseHoldWages(econ_id=self.econ, dem_id=self.dem),
+                'mil_wages': MilWages(econ_id=self.econ, dem_id=self.dem)
                 }
 
     def output(self):

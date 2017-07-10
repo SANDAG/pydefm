@@ -16,6 +16,7 @@ from forecast import util
 
 class Population(luigi.Task):
     year = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
         return None
@@ -32,10 +33,9 @@ class Population(luigi.Task):
             db_run_id = log.new_run()
             run_id = pd.Series([db_run_id])
             run_id.to_hdf('temp/data.h5', 'run_id',  mode='a')
-            rate_versions = util.yaml_to_dict('model_config.yml', 'rate_versions')
 
             dem_sim_rates = extract.create_df('dem_sim_rates', 'dem_sim_rates_table',
-                                              rate_id=rate_versions['dem_sim_rates'], index=None)
+                                              rate_id=self.dem_id, index=None)
 
             dem_sim_rates.to_hdf('temp/data.h5', 'dem_sim_rates',  mode='a')
 
@@ -73,9 +73,10 @@ class Population(luigi.Task):
 
 class InMigrationRates(luigi.Task):
     year = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return Population(self.year)
+        return Population(year=self.year, dem_id=self.dem_id)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -89,9 +90,10 @@ class InMigrationRates(luigi.Task):
 
 class OutMigrationRates(luigi.Task):
     year = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return Population(self.year)
+        return Population(year=self.year, dem_id=self.dem_id)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -105,9 +107,10 @@ class OutMigrationRates(luigi.Task):
 
 class DeathRates(luigi.Task):
     year = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return Population(self.year)
+        return Population(year=self.year, dem_id=self.dem_id)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -120,9 +123,10 @@ class DeathRates(luigi.Task):
 
 class BirthRates(luigi.Task):
     year = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return Population(self.year)
+        return Population(year=self.year, dem_id=self.dem_id)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -135,10 +139,11 @@ class BirthRates(luigi.Task):
 
 class MigrationPopulationOut(luigi.Task):
     year = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
         return {
-                'migration_rates': OutMigrationRates(self.year)
+                'migration_rates': OutMigrationRates(year=self.year, dem_id=self.dem_id)
                 }
 
     def output(self):
@@ -156,10 +161,11 @@ class MigrationPopulationOut(luigi.Task):
 
 class MigrationPopulationIn(luigi.Task):
     year = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
         return {
-                'migration_rates': InMigrationRates(self.year)
+                'migration_rates': InMigrationRates(year=self.year, dem_id=self.dem_id)
                 }
 
     def output(self):
@@ -177,9 +183,10 @@ class MigrationPopulationIn(luigi.Task):
 
 class NonMigratingPopulation(luigi.Task):
     year = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return {'migration_pop': MigrationPopulationOut(self.year)
+        return {'migration_pop': MigrationPopulationOut(year=self.year, dem_id=self.dem_id)
                 }
 
     def output(self):
@@ -195,10 +202,11 @@ class NonMigratingPopulation(luigi.Task):
 
 class DeadPopulation(luigi.Task):
     year = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return {'non_mig_pop': NonMigratingPopulation(self.year),
-                'death_rates': DeathRates(self.year)
+        return {'non_mig_pop': NonMigratingPopulation(year=self.year, dem_id=self.dem_id),
+                'death_rates': DeathRates(year=self.year, dem_id=self.dem_id)
                 }
 
     def output(self):
@@ -217,10 +225,11 @@ class DeadPopulation(luigi.Task):
 
 class NonMigratingSurvivedPop(luigi.Task):
     year = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return {'non_mig_pop': NonMigratingPopulation(self.year),
-                'dead_pop': DeadPopulation(self.year)
+        return {'non_mig_pop': NonMigratingPopulation(year=self.year, dem_id=self.dem_id),
+                'dead_pop': DeadPopulation(year=self.year, dem_id=self.dem_id)
                 }
 
     def output(self):
@@ -235,10 +244,11 @@ class NonMigratingSurvivedPop(luigi.Task):
 
 class NewBornPopulation(luigi.Task):
     year = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return {'non_mig_population': NonMigratingPopulation(self.year),
-                'birth_rates': BirthRates(self.year)
+        return {'non_mig_population': NonMigratingPopulation(year=self.year, dem_id=self.dem_id),
+                'birth_rates': BirthRates(year=self.year, dem_id=self.dem_id)
                 }
 
     def output(self):
@@ -284,9 +294,10 @@ class NewBornPopulation(luigi.Task):
 
 class AgedPop(luigi.Task):
     year = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return {'non_mig_survived_pop': NonMigratingSurvivedPop(self.year)
+        return {'non_mig_survived_pop': NonMigratingSurvivedPop(year=self.year, dem_id=self.dem_id)
                 }
 
     def output(self):
@@ -300,10 +311,11 @@ class AgedPop(luigi.Task):
 
 class NewPopulation(luigi.Task):
     year = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return {'new_born': NewBornPopulation(self.year),
-                'in_mig_pop': MigrationPopulationIn(self.year)
+        return {'new_born': NewBornPopulation(year=self.year, dem_id=self.dem_id),
+                'in_mig_pop': MigrationPopulationIn(year=self.year, dem_id=self.dem_id)
                 }
 
     def output(self):
@@ -324,10 +336,11 @@ class NewPopulation(luigi.Task):
 
 class FinalPopulation(luigi.Task):
     year = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     def requires(self):
-        return {'aged_pop': AgedPop(self.year),
-                'new_pop': NewPopulation(self.year)
+        return {'aged_pop': AgedPop(year=self.year, dem_id=self.dem_id),
+                'new_pop': NewPopulation(year=self.year, dem_id=self.dem_id)
                 }
 
     def output(self):
@@ -373,13 +386,14 @@ class FinalPopulation(luigi.Task):
 
 class ExportTables(luigi.Task):
     year = luigi.Parameter()
+    dem_id = luigi.Parameter()
 
     @property
     def priority(self):
         return 10000 - self.year
 
     def requires(self):
-        return FinalPopulation(year=self.year)
+        return FinalPopulation(year=self.year, dem_id=self.dem_id)
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -418,10 +432,12 @@ class ExportTables(luigi.Task):
 
 
 class Iter(luigi.contrib.hadoop.JobTask):
+    start = luigi.Parameter()
+    end = luigi.Parameter()
+    dem = luigi.Parameter()
 
     def requires(self):
-        years = util.yaml_to_dict('model_config.yml', 'years')
-        return [ExportTables(y) for y in range(years['y1'], years['yf'] + 1)]
+        return [ExportTables(year=y, dem_id=int(self.dem)) for y in range(int(self.start), int(self.end) + 1)]
 
     def output(self):
         return luigi.LocalTarget('temp/data.h5')
@@ -433,5 +449,6 @@ class Iter(luigi.contrib.hadoop.JobTask):
 if __name__ == '__main__':
 
     os.makedirs('temp')
-    luigi.run(main_task_cls=Iter)
+
+    luigi.run(main_task_cls=Iter, cmdline_args=['--start=2011', '--end=2012', '--dem=1005'])
     shutil.rmtree('temp')
