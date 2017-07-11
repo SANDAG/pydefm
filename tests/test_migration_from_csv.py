@@ -11,11 +11,6 @@ def pop():
     return pd.read_csv('tests/data/migration/population.csv',index_col=[0,1,2])
 
 
-# @pytest.fixture
-# def m_rates():
-#     return pd.read_csv('tests/data/input/migration_rates.csv',index_col=[0,1,2])
-
-
 @pytest.fixture
 def pop_w_mig_rates():
     return pd.read_csv('tests/data/migration/population_w_migration_rates.csv',index_col=[0,1,2])
@@ -56,26 +51,22 @@ def non_mig_survived_aged_pop():
     return pd.read_csv('tests/data/aged/non_migrating_survived_aged_population.csv',index_col=[0,1,2],dtype = {'non_mig_survived_pop': np.float64})
 
 
-# @pytest.fixture
-# def pop_out():
-#     return pd.read_csv('tests/data/pop_Dout_Fout.csv',index_col=[0,1,2])
+@pytest.fixture
+def newborns_and_in_migration():
+    return pd.read_csv('tests/data/newborns/new_borns_and_in_migration.csv',index_col=[0,1,2])
 
 
-# @pytest.mark.parametrize(
-#     "expected",
-#     [pd.read_csv('tests/data/output/population_w_migration_rates.csv',index_col=[0,1,2])])
-# def test_migration(pop, m_rates, expected):
-#     result =  migration.migrating_pop(pop, m_rates)
-#     tm.assert_frame_equal(result, expected)
+@pytest.fixture
+def new_pop():
+    return pd.read_csv('tests/data/newborns/new_population.csv',index_col=[0,1,2])
 
+@pytest.fixture
+def non_mig_and_new():
+    return pd.read_csv('tests/data/population/non_mig_population_and_new_pop.csv',index_col=[0,1,2])
 
-# @pytest.mark.parametrize(
-#     "expected",
-#     [pd.read_csv('tests/data/migrating_pop/non_migrating_pop.csv',index_col=[0,1,2],dtype = {'mig_Dout':  np.float64, 'non_mig_pop': np.float64})])
-# def test_non_migrating_pop(joined_pop_rates, expected):
-#     result = migration.non_migrating_pop(joined_pop_rates)
-#     tm.assert_frame_equal(result, expected)
-#
+@pytest.fixture
+def final_pop():
+    return pd.read_csv('tests/data/population/final_population.csv',index_col=[0,1,2],dtype = {'persons': np.float64})
 
 
 def test_in_migrating_population(pop_w_mig_rates, pop_in):
@@ -116,6 +107,13 @@ def test_non_migrating_survived_pop(pop_non_mig,pop_dead,expected):
 
 def test_aged_pop(survived_pop, non_mig_survived_aged_pop):
     result = compute.aged_pop(survived_pop)
-    result.to_csv('tests/data/aged_result.csv')
-    result.dtypes
     tm.assert_frame_equal(result, non_mig_survived_aged_pop)
+
+
+def test_new_pop(newborns_and_in_migration, new_pop):
+    result = compute.new_population(newborns_and_in_migration)
+    tm.assert_frame_equal(result, new_pop)
+
+def test_final_population(non_mig_and_new, final_pop):
+    result = compute.final_population(non_mig_and_new)
+    tm.assert_frame_equal(result, final_pop)
