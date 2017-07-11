@@ -417,22 +417,6 @@ layout = layout([
 ], sizing_mode='scale_width')
 
 curdoc().add_root(layout)
-'''
-for w in [Year]:
-    w.on_change('value', update_plot)
 
-
-# Set up layouts and add to document
-inputs = widgetbox(Year)
-
-curdoc().add_root(column(plot, inputs, plot7, width=4000))
-
-
-curdoc().add_root(row(plot2, width=800))
-curdoc().add_root(row(plot3, width=800))
-curdoc().add_root(row(plot4, width=800))
-curdoc().add_root(row(plot5, width=800))
-curdoc().add_root(row(plot6, width=800))
-'''
 curdoc().title = "Sliders"
 

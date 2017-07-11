@@ -7,7 +7,7 @@
   <script language="JavaScript">
     function showInput() {
         document.getElementById('display').innerHTML ='Running simulation with Demographic Scenario ID: ' +
-                    document.getElementById("dem_id").value + 'Economic Scenario ID: ' +
+                    document.getElementById("dem_id").value + ' Economic Scenario ID: ' +
                     document.getElementById("econ_id").value + ' , from ' +   document.getElementById("start_y").value +
                     ' to ' +   document.getElementById("end_y").value;
     }
@@ -101,36 +101,52 @@
     </div>
 
                               <br><br>
+                                                  <br><br>
 
 
 
+
+
+<div class="w3-third">
+
+              <input class="w3-button w3-black w3-section" type="submit" value="Run Simulation" onclick="showInput();">
+               </div>
+
+      <div class="w3-third">
+          <br>
+                        </div>
+
+      <div class="w3-third">
+
+    <input class="w3-button w3-black w3-section" type="submit" value="Track Luigi Task Flow" onclick="window.open('http://localhost:8082/')">
+               </div>
+              </div>
+
+
+  <p><span id='display'></span></p>
+                      </div>
 
               </div>
 
-              <input class="w3-button w3-black w3-section" type="submit" value="Run Simulation" onclick="showInput();">
+              </div>
+
+
+           </form>
+
+    <form action="." method="BOKEH">
+            <div class="w3-row-padding">
+
+            <div class="w3-col l3 m6 w3-margin-bottom">
+
+        <h5 class="w3-border-bottom w3-border-light-grey w3-padding-16">Click below to check results when the simulation is complete </h5>
+
+        <input class="w3-button w3-black w3-section" type="submit" value="Bokeh Results" onclick="window.open('http://localhost:5006/bokeh_graphs')">
+      </div>
+      </div>
+
             </form>
 
       </div>
-                      <br><br>
-      </div>
-  <p><span id='display'></span></p>
-    </div>
-
-    <input class="w3-button w3-black w3-section" type="submit" value="Track luigi task flow" onclick="window.open('http://localhost:8082/')">
-
-
-    <input class="w3-button w3-black w3-section" type="submit" value="Show bokeh results" onclick="window.open('http://localhost:5006/bokeh_graphs')">
-
-
-            </form>
-
-      </div>
-                      <br><br>
-      </div>
-    </div>
-
-
-
 
 
 
