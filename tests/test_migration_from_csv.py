@@ -8,12 +8,12 @@ import numpy as np
 
 @pytest.fixture
 def pop():
-    return pd.read_csv('tests/data/migration/population.csv',index_col=[0,1,2])
+    return pd.read_csv('tests/data/population/population.csv',index_col=[0,1,2])
 
 
 @pytest.fixture
 def pop_w_mig_rates():
-    return pd.read_csv('tests/data/migration/population_w_migration_rates.csv',index_col=[0,1,2])
+    return pd.read_csv('tests/data/population/population_w_migration_rates.csv',index_col=[0,1,2])
 
 @pytest.fixture
 def pop_w_death_rates():
@@ -33,7 +33,7 @@ def pop_dead():
 
 @pytest.fixture
 def pop_non_mig():
-    return pd.read_csv('tests/data/migration/non_migrating_population.csv',index_col=[0,1,2],dtype = {'mig_Dout':  np.float64,'mig_Fout':  np.float64,'non_mig_pop': np.float64})
+    return pd.read_csv('tests/data/population/population_minus_out_migration.csv',index_col=[0,1,2],dtype = {'mig_Dout':  np.float64,'mig_Fout':  np.float64,'non_mig_pop': np.float64})
 
 
 @pytest.fixture
@@ -71,7 +71,6 @@ def final_pop():
 
 def test_in_migrating_population(pop_w_mig_rates, pop_in):
     result = compute.in_migrating_population(pop_w_mig_rates)
-    result.to_csv('tests/data/result_out_mig_changes.csv')
     tm.assert_frame_equal(result, pop_in)
 
 
