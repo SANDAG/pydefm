@@ -25,4 +25,3 @@ def rates_for_yr(population, rates_all_years, sim_year):
     rates_yr = rates_all_years[rates_all_years['yr'] == sim_year]
     pop_w_rates = population.join(rates_yr)
     return pop_w_rates
-
