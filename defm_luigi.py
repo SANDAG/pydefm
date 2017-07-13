@@ -12,6 +12,7 @@ from pysandag.database import get_connection_string
 import pydefm.compute as cp
 import numpy as np
 from forecast import util
+from pydefm import utils
 
 
 class Population(luigi.Task):
@@ -152,7 +153,7 @@ class MigrationPopulationOut(luigi.Task):
     def run(self):
         mig_rates = pd.read_hdf('temp/data.h5', 'out_mig_rates')
         pop = pd.read_hdf('temp/data.h5', 'pop')
-        pop = compute.rates_for_yr(pop, mig_rates, self.year)
+        pop = utils.rates_for_yr(pop, mig_rates, self.year)
 
         pop = cp.out_migrating_population(pop)
 
@@ -174,7 +175,7 @@ class MigrationPopulationIn(luigi.Task):
     def run(self):
         mig_rates = pd.read_hdf('temp/data.h5', 'in_mig_rates')
         pop = pd.read_hdf('temp/data.h5', 'pop')
-        pop = compute.rates_for_yr(pop, mig_rates, self.year)
+        pop = utils.rates_for_yr(pop, mig_rates, self.year)
 
         pop = cp.in_migrating_population(pop)
 
@@ -258,7 +259,7 @@ class NewBornPopulation(luigi.Task):
         birth_rates = pd.read_hdf('temp/data.h5', 'birth_rates')
         pop = pd.read_hdf('temp/data.h5', 'non_mig_pop')
         pop = pop[(pop['type'] == 'HHP') & (pop['mildep'] == 'N')]
-        birth_rates = compute.rates_for_yr(pop, birth_rates, self.year)
+        birth_rates = utils.rates_for_yr(pop, birth_rates, self.year)
         birth_rates = birth_rates[(birth_rates['yr'] == self.year)]
 
         rate_versions = util.yaml_to_dict('model_config.yml', 'rate_versions')
