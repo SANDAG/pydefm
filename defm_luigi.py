@@ -268,7 +268,7 @@ class NewBornPopulation(luigi.Task):
 
         random_numbers = random_numbers[(random_numbers['yr'] == self.year)]
         random_numbers = random_numbers[['random_number']]
-        births_per_cohort = compute.births_all(birth_rates, self.year, pop_col='non_mig_pop', rand_df=random_numbers)
+        births_per_cohort = cp.births_all(birth_rates, pop_col='non_mig_pop', rand_df=random_numbers)
 
         death_rates = pd.read_hdf('temp/data.h5', 'death_rates')
         death_rates = death_rates[(death_rates['yr'] == self.year)]

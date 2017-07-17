@@ -130,3 +130,54 @@ def final_population(pop):
                               (pop['persons_sum1'] * pop['rates']).round(),
                               pop['persons1'])
     return pop[['type', 'mildep', 'persons', 'households']]
+
+
+def births_all(b_df, rand_df=None, pop_col='persons'):
+    """
+    Calculate births for given year based on rates.
+    Predict male births as 51% of all births & female births as 49%.
+    Result is nearest integer (floor) after +0 or +0.5 (randomly generated)
+
+    Parameters
+    ----------
+    b_df : pandas.DataFrame
+        with population for current yr and birth rates
+    rand_df : pandas.DataFrame
+        with random numbers
+    pop_col : string
+        column name from which births to be calculated
+    Returns
+    -------
+    b_df : pandas DataFrame
+        male and female births by cohort (race_ethn and age)
+
+    """
+
+    # total births =  population * birth rate (fill blanks w zero)
+    b_df['births_rounded'] = (b_df[pop_col] *
+                              b_df['birth_rate']).fillna(0.0)
+    b_df = b_df.round({'births_rounded': 0})
+
+    # male births 51%
+    b_df['births_m_float'] = b_df['births_rounded'] * 0.51
+
+    b_df = b_df.join(rand_df)
+
+    # Add random 0 or 0.5
+    # Convert to int which truncates float (floor)
+    b_df['births_m'] = b_df['births_m_float'] + b_df['random_number']
+    b_df['births_m'] = b_df['births_m'].astype(int)
+
+    # female births
+    b_df['births_f'] = b_df['births_rounded'] - b_df['births_m']
+    b_df= b_df.reset_index(drop=False)
+    b_df = b_df.drop('sex', 1)
+    b_df.rename(columns={'births_m': 'male births'}, inplace=True)
+    b_df.rename(columns={'births_f': 'female births'}, inplace=True)
+    b_df.rename(columns={'random_number': 'add random then floor'}, inplace=True)
+    b_df.rename(columns={'age': 'mother age'}, inplace=True)
+    b_df.rename(columns={'race_ethn': 'mother race_ethn'}, inplace=True)
+    b_df.rename(columns={'births_rounded': 'total births'}, inplace=True)
+    b_df.rename(columns={'births_m_float': 'male births float'}, inplace=True)
+
+    return b_df
