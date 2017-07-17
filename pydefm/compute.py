@@ -170,14 +170,5 @@ def births_all(b_df, rand_df=None, pop_col='persons'):
 
     # female births
     b_df['births_f'] = b_df['births_rounded'] - b_df['births_m']
-    b_df= b_df.reset_index(drop=False)
-    b_df = b_df.drop('sex', 1)
-    b_df.rename(columns={'births_m': 'male births'}, inplace=True)
-    b_df.rename(columns={'births_f': 'female births'}, inplace=True)
-    b_df.rename(columns={'random_number': 'add random then floor'}, inplace=True)
-    b_df.rename(columns={'age': 'mother age'}, inplace=True)
-    b_df.rename(columns={'race_ethn': 'mother race_ethn'}, inplace=True)
-    b_df.rename(columns={'births_rounded': 'total births'}, inplace=True)
-    b_df.rename(columns={'births_m_float': 'male births float'}, inplace=True)
 
     return b_df
