@@ -155,8 +155,8 @@ def births_all(b_df, rand_df=None, pop_col='persons'):
 
     # total births =  population * birth rate (fill blanks w zero)
     b_df['births_rounded'] = (b_df[pop_col] *
-                              b_df['birth_rate']).fillna(0.0)
-    b_df = b_df.round({'births_rounded': 0})
+                              b_df['birth_rate']).round()
+    # b_df = b_df.round({'births_rounded': 0})
 
     # male births 51%
     b_df['births_m_float'] = b_df['births_rounded'] * 0.51
@@ -166,9 +166,9 @@ def births_all(b_df, rand_df=None, pop_col='persons'):
     # Add random 0 or 0.5
     # Convert to int which truncates float (floor)
     b_df['births_m'] = b_df['births_m_float'] + b_df['random_number']
-    b_df['births_m'] = b_df['births_m'].astype(int)
+    b_df['births_m'] = b_df['births_m'].astype('int64')
 
     # female births
-    b_df['births_f'] = b_df['births_rounded'] - b_df['births_m']
+    b_df['births_f'] = (b_df['births_rounded'] - b_df['births_m']).round()
 
     return b_df
