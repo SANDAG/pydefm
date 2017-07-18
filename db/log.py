@@ -9,7 +9,7 @@ from pysandag.database import get_connection_string
 import os
 
 
-def new_run(name='runs', run_id=None):
+def new_run(name='runs', run_id=None, econ_id=0, dem_id=0):
     Base = declarative_base()
     table_name = name
     class Run(Base):
@@ -17,11 +17,8 @@ def new_run(name='runs', run_id=None):
         __table_args__ = {'schema': 'defm'}
         # define columns for the table
         id = Column(Integer, primary_key=True)
-        base_rate_version = Column(Integer)
-        birth_rate_version = Column(Integer)
-        death_rate_version = Column(Integer)
-        migration_rate_version = Column(Integer)
-        householder_rate_version = Column(Integer)
+        economic_secnario_id = Column(Integer)
+        demographic_scenario_id = Column(Integer)
 
     #metadata = MetaData(schema="defm")
 
@@ -46,11 +43,8 @@ def new_run(name='runs', run_id=None):
 
     # Insert versions in database
     model_run = Run(
-        base_rate_version=1,
-        birth_rate_version=1,
-        death_rate_version=1,
-        migration_rate_version=1,
-        householder_rate_version=1)
+        economic_secnario_id=econ_id,
+        demographic_scenario_id=dem_id)
 
     session.add(model_run)
     session.commit()

@@ -28,7 +28,7 @@ sql_in_engine = create_engine(db_connection_string)
 in_query = getattr(sql, 'max_run_id')
 db_run_id = pd.read_sql(in_query, defm_engine, index_col=None)
 
-run_id = db_run_id['max'].iloc[0]
+run_id = db_run_id['id'].iloc[0]
 
 results_sql = '''SELECT "Population" as pop_py
                         ,"Run_id"
@@ -87,8 +87,8 @@ sas_sql = '''SELECT [yr] as Year
             ,b_nonmil as births_sas_1005
             ,mig_net as net_mig_sas_1005
             FROM [isam].[demographic_output].[summary]
-            WHERE sim_id = 1005
-            '''
+            WHERE sim_id = ''' + db_run_id['demographic_scenario_id'].iloc[0]
+
 
 sas_df = pd.read_sql(sas_sql, sql_in_engine, index_col='Year')
 
@@ -102,8 +102,7 @@ sas_inc_sql = '''
       Supplemental_Social_Security as Supplemental_Social_Security_sas,
       Social_Security as Social_Security_sas
     FROM [isam].[economic_output].[unearned_income]
-    WHERE [economic_simulation_id] = 1002
-    '''
+    WHERE [economic_simulation_id] = ''' + db_run_id['economic_secenario_id'].iloc[0]
 
 sas_inc_df = pd.read_sql(sas_inc_sql, sql_in_engine, index_col='Year')
 
@@ -146,8 +145,7 @@ sas_emp_sql = '''
       ,[P_2064]
       ,[P_2564]
     FROM [isam].[economic_output].[summary]
-    WHERE [economic_simulation_id] = 1002
-    '''
+    WHERE [economic_simulation_id] =  ''' + db_run_id['economic_secenario_id'].iloc[0]
 
 sas_emp_df = pd.read_sql(sas_emp_sql, sql_in_engine, index_col='Year')
 

@@ -225,8 +225,11 @@ SELECT yr
 
 
 max_run_id = '''
-SELECT max(id)
+SELECT id, economic_secenario_id, demographic_scenario_id
   FROM defm.runs
+WHERE id = (
+SELECT max(id)
+  FROM defm.runs)
 '''
 
 aigr = '''
@@ -270,3 +273,9 @@ SELECT [economic_simulation_id]
   FROM %s
   WHERE economic_simulation_id != %s
   ORDER BY [economic_simulation_id]'''
+
+trs_rates = '''
+SELECT [yr]
+      ,[trs_pct]
+  FROM %s
+  WHERE trs_id = %'''

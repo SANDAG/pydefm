@@ -405,12 +405,16 @@ class PersonalIncome(luigi.Task):
 
     def run(self):
         engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
+        econ_sim_rates = pd.read_hdf('temp/data.h5', 'econ_sim_rates')
+
+        trs_rates = extract.create_df('trs_rates', 'trs_rates_table', rate_id=econ_sim_rates.trs_id[0], index=['yr'])
 
         hh_income = pd.read_hdf('temp/data.h5', 'hh_income')
         mil_income = pd.read_hdf('temp/data.h5', 'mil_income')
         ue_income = pd.read_hdf('temp/data.h5', 'ue_income')
         inc = hh_income.join(mil_income)
         inc = inc.join(ue_income)
+        inc = inc.join(trs_rates)
 
         inc['unearned_income'] = (inc['Interest'] + inc['Other'] + inc['Public_Assistance'] + inc['Retirement'] +
                                   inc['Supplemental_Social_Security'] + inc['Social_Security']).round()
@@ -418,10 +422,13 @@ class PersonalIncome(luigi.Task):
         inc['personal_income'] = (inc['jobs_local_wages'] + inc['wf_outside_wages'] + inc['unearned_income'] +
                                   inc['Selfemp_Income'] + inc['military_income']).round()
 
+        inc['taxable_retail_sales'] = (inc['personal_income'] * inc['trs_pct']).round()
+
         inc = inc[['labor_force', 'unemployed', 'work_force', 'work_force_outside',
                     'work_force_local', 'jobs_local', 'jobs_total', 'jobs_external',
                     'avg_wage', 'jobs_total_wages', 'jobs_local_wages', 'jobs_external_wages',
-                    'wf_outside_wages', 'military_income', 'unearned_income', 'Selfemp_Income', 'personal_income']]
+                    'wf_outside_wages', 'military_income', 'unearned_income', 'Selfemp_Income', 'personal_income',
+                    'taxable_retail_sales']]
 
         run_table = pd.read_hdf('temp/data.h5', 'run_id')
         run_id = run_table[0]

@@ -24,7 +24,7 @@ class CombinedSimulation(luigi.Task):
     econ = luigi.Parameter()
 
     def requires(self):
-        return {'def': defm.Iter(start=self.start, end=self.end, dem=self.dem),
+        return {'def': defm.Iter(start=self.start, end=self.end, dem=self.dem, econ=self.econ),
                 'inc': inc.IncomeByType(econ=self.econ, dem=self.dem),
                 'emp': emp.PersonalIncome(econ=self.econ, dem=self.dem)}
 
@@ -45,8 +45,8 @@ def my_form():
     dem_sim_ids = extract.create_df('dem_sim_ids', 'dem_sim_ids_table', rate_id=0, index=None)
     dems = dem_sim_ids['demographic_simulation_id'].tolist()
     econs = econ_sim_ids['economic_simulation_id'].tolist()
-    startyear = range(2010, 2050)
-    endyear = range(2011, 2051)
+    startyear = range(2011, 2050)
+    endyear = range(2012, 2051)
 
     return render_template("my-form.html", result1=dems, result2=econs, startyear=startyear, endyear=endyear)
 
