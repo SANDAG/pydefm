@@ -42,7 +42,7 @@ class Population(luigi.Task):
             dem_sim_rates.to_hdf('temp/data.h5', 'dem_sim_rates',  mode='a')
 
             pop = extract.create_df('population', 'population_table', rate_id=dem_sim_rates.base_population_id[0])
-            pop.to_hdf('temp/data.h5', 'pop', format='table', mode='a')
+            pop.to_hdf('temp/data.h5', 'pop', mode='a')
 
             pop2 = pop[(pop['type'] == 'HHP')]
             pop2 = pop2.reset_index(drop=False)
@@ -54,7 +54,7 @@ class Population(luigi.Task):
             pop2['rates'] = np.where(pop2['type'].isin(['INS', 'OTH']), (pop2['persons'] / pop2['persons_sum']), 0)
 
             rates = pop2[['mildep', 'type', 'rates']]
-            rates.to_hdf('temp/data.h5', 'ins_oth_rates', format='table', mode='a')
+            rates.to_hdf('temp/data.h5', 'ins_oth_rates', mode='a')
 
             engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
             population_summary = []
@@ -88,7 +88,7 @@ class InMigrationRates(luigi.Task):
         dem_sim_rates = pd.read_hdf('temp/data.h5', 'dem_sim_rates')
         mig_rates = extract.create_df('migration', 'migration_rate_table', rate_id=dem_sim_rates.migration_rate_id[0])
         mig_rates = mig_rates[['yr', 'DIN', 'FIN']]
-        mig_rates.to_hdf('temp/data.h5', 'in_mig_rates', format='table', mode='a')
+        mig_rates.to_hdf('temp/data.h5', 'in_mig_rates', mode='a')
 
 
 class OutMigrationRates(luigi.Task):
@@ -106,7 +106,7 @@ class OutMigrationRates(luigi.Task):
         dem_sim_rates = pd.read_hdf('temp/data.h5', 'dem_sim_rates')
         mig_rates = extract.create_df('migration', 'migration_rate_table', rate_id=dem_sim_rates.migration_rate_id[0])
         mig_rates = mig_rates[['yr', 'DOUT', 'FOUT']]
-        mig_rates.to_hdf('temp/data.h5', 'out_mig_rates', format='table', mode='a')
+        mig_rates.to_hdf('temp/data.h5', 'out_mig_rates', mode='a')
 
 
 class DeathRates(luigi.Task):
@@ -123,7 +123,7 @@ class DeathRates(luigi.Task):
     def run(self):
         dem_sim_rates = pd.read_hdf('temp/data.h5', 'dem_sim_rates')
         death_rates = extract.create_df('death', 'death_rate_table', rate_id=dem_sim_rates.death_rate_id[0])
-        death_rates.to_hdf('temp/data.h5', 'death_rates', format='table', mode='a')
+        death_rates.to_hdf('temp/data.h5', 'death_rates', mode='a')
 
 
 class BirthRates(luigi.Task):
@@ -140,7 +140,7 @@ class BirthRates(luigi.Task):
     def run(self):
         dem_sim_rates = pd.read_hdf('temp/data.h5', 'dem_sim_rates')
         birth_rates = extract.create_df('birth', 'birth_rate_table', rate_id=dem_sim_rates.birth_rate_id[0])
-        birth_rates.to_hdf('temp/data.h5', 'birth_rates', format='table', mode='a')
+        birth_rates.to_hdf('temp/data.h5', 'birth_rates', mode='a')
 
 
 class MigrationPopulationOut(luigi.Task):
@@ -163,7 +163,7 @@ class MigrationPopulationOut(luigi.Task):
 
         pop = cp.out_migrating_population(pop)
 
-        pop.to_hdf('temp/data.h5', 'mig_out', format='table', mode='a')
+        pop.to_hdf('temp/data.h5', 'mig_out', mode='a')
 
 
 class MigrationPopulationIn(luigi.Task):
@@ -186,7 +186,7 @@ class MigrationPopulationIn(luigi.Task):
 
         pop = cp.in_migrating_population(pop)
 
-        pop.to_hdf('temp/data.h5', 'mig_in', format='table', mode='a')
+        pop.to_hdf('temp/data.h5', 'mig_in', mode='a')
 
 
 class NonMigratingPopulation(luigi.Task):
@@ -206,7 +206,7 @@ class NonMigratingPopulation(luigi.Task):
         pop = pd.read_hdf('temp/data.h5', 'pop')
 
         pop = cp.non_migrating_population(pop, out_pop)
-        pop.to_hdf('temp/data.h5', 'non_mig_pop', format='table', mode='a')
+        pop.to_hdf('temp/data.h5', 'non_mig_pop', mode='a')
 
 
 class DeadPopulation(luigi.Task):
@@ -230,7 +230,7 @@ class DeadPopulation(luigi.Task):
 
         # do we apply death rates to mil pop?
         pop = cp.dead_population(pop)
-        pop.to_hdf('temp/data.h5', 'dead_pop', format='table', mode='a')
+        pop.to_hdf('temp/data.h5', 'dead_pop', mode='a')
 
 
 class NonMigratingSurvivedPop(luigi.Task):
@@ -250,7 +250,7 @@ class NonMigratingSurvivedPop(luigi.Task):
         deaths = pd.read_hdf('temp/data.h5', 'dead_pop')
         non_mig_pop = pd.read_hdf('temp/data.h5', 'non_mig_pop')
         non_mig_pop = cp.non_migrating_survived_pop(non_mig_pop, deaths)
-        non_mig_pop.to_hdf('temp/data.h5', 'non_mig_survived_pop', format='table', mode='a')
+        non_mig_pop.to_hdf('temp/data.h5', 'non_mig_survived_pop', mode='a')
 
 
 class NewBornPopulation(luigi.Task):
@@ -298,10 +298,10 @@ class NewBornPopulation(luigi.Task):
 
         dead_pop = dead_pop.drop(['new_deaths'], 1)
 
-        dead_pop.to_hdf('temp/data.h5', 'dead_pop', format='table', mode='a')
+        dead_pop.to_hdf('temp/data.h5', 'dead_pop', mode='a')
 
         newborn = newborn.drop(['new_deaths', 'death_rate'], 1)
-        newborn.to_hdf('temp/data.h5', 'new_born', format='table', mode='a')
+        newborn.to_hdf('temp/data.h5', 'new_born', mode='a')
 
 
 class AgedPop(luigi.Task):
@@ -319,7 +319,7 @@ class AgedPop(luigi.Task):
     def run(self):
         non_mig_survived_pop = pd.read_hdf('temp/data.h5', 'non_mig_survived_pop')
         non_mig_survived_pop = cp.aged_pop(non_mig_survived_pop)
-        non_mig_survived_pop.to_hdf('temp/data.h5', 'aged_pop', format='table', mode='a')
+        non_mig_survived_pop.to_hdf('temp/data.h5', 'aged_pop', mode='a')
 
 
 class NewPopulation(luigi.Task):
@@ -345,7 +345,7 @@ class NewPopulation(luigi.Task):
 
         new_pop = cp.new_population(new_pop)
 
-        new_pop.to_hdf('temp/data.h5', 'new_pop', format='table', mode='a')
+        new_pop.to_hdf('temp/data.h5', 'new_pop', mode='a')
 
 
 class FinalPopulation(luigi.Task):
@@ -396,7 +396,7 @@ class FinalPopulation(luigi.Task):
         pop['households'] = (pop['persons'] * pop['householder_rate']).round()
         pop = pop.drop(['householder_rate'], 1)
 
-        pop.to_hdf('temp/data.h5', 'pop', format='table', mode='a')
+        pop.to_hdf('temp/data.h5', 'pop', mode='a')
 
 
 class ExportTables(luigi.Task):

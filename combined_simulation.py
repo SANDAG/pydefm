@@ -62,7 +62,15 @@ def my_form_post():
     luigi.run(main_task_cls=CombinedSimulation, cmdline_args=['--start=' + str(start_year), '--end=' + str(end_year), '--dem=' + str(dem), '--econ=' + str(econ)])
     os.system("bokeh serve bokeh_graphs.py")
 
-    #return '''<h1>Running Demographic Scenario:''' + dem + "</h1> <br>" + '''<h1>Running Economic Scenario: ''' + econ +'''</h1><br> <input class="w3-button w3-black w3-section" type="submit" value="Show bokeh results" onclick="window.open('http://localhost:5006/bokeh_graphs')"> '''
+    return '''
+    <form action="." method="BOKEH">
+         <div class="w3-row-padding">
+            <div class="w3-col l3 m6 w3-margin-bottom">
+                 <h5 class="w3-border-bottom w3-border-light-grey w3-padding-16">Click below to check results when the simulation is complete </h5>
+                 <input class="w3-button w3-black w3-section" type="submit" value="Bokeh Results" onclick="window.open('http://localhost:5006/bokeh_graphs')">
+            </div>
+         </div>
+    </form>" onclick="window.open('http://localhost:5006/bokeh_graphs')"> '''
 
 
 if __name__ == '__main__':

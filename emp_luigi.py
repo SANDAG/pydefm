@@ -103,7 +103,7 @@ class MilPopulation(luigi.Task):
             in_query = getattr(sql, 'max_run_id')
             db_run_id = pd.read_sql(in_query, engine, index_col=None)
 
-            run_id = pd.Series([db_run_id['max'].iloc[0]])
+            run_id = pd.Series([db_run_id['id'].iloc[0]])
             run_id.to_hdf('temp/data.h5', 'run_id',  mode='a')
 
             tables = util.yaml_to_dict('model_config.yml', 'db_tables')
@@ -407,7 +407,7 @@ class PersonalIncome(luigi.Task):
         engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
         econ_sim_rates = pd.read_hdf('temp/data.h5', 'econ_sim_rates')
 
-        trs_rates = extract.create_df('trs_rates', 'trs_rates_table', rate_id=econ_sim_rates.trs_id[0], index=['yr'])
+        trs_rates = extract.create_df('trs', 'trs_table', rate_id=econ_sim_rates.trs_id[0], index=['yr'])
 
         hh_income = pd.read_hdf('temp/data.h5', 'hh_income')
         mil_income = pd.read_hdf('temp/data.h5', 'mil_income')

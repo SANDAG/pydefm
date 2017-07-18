@@ -274,8 +274,8 @@ SELECT [economic_simulation_id]
   WHERE economic_simulation_id != %s
   ORDER BY [economic_simulation_id]'''
 
-trs_rates = '''
+trs = '''
 SELECT [yr]
       ,[trs_pct]
   FROM %s
-  WHERE trs_id = %'''
+  WHERE trs_id = %s'''
