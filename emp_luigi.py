@@ -32,7 +32,7 @@ class EmpPopulation(luigi.Task):
             db_run_id = pd.read_sql(in_query, engine, index_col=None)
             # db_run_id = log.new_run(name='emp_run_log', run_id=db_run_id['max'].iloc[0])
 
-            run_id = pd.Series([db_run_id['max'].iloc[0]])
+            run_id = pd.Series([db_run_id['id'].iloc[0]])
             run_id.to_hdf('temp/data.h5', 'run_id',  mode='a')
 
             tables = util.yaml_to_dict('model_config.yml', 'db_tables')

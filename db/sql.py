@@ -225,7 +225,7 @@ SELECT yr
 
 
 max_run_id = '''
-SELECT id, economic_secenario_id, demographic_scenario_id
+SELECT id, economic_scenario_id, demographic_scenario_id
   FROM defm.runs
 WHERE id = (
 SELECT max(id)

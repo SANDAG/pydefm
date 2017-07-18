@@ -17,7 +17,7 @@ def new_run(name='runs', run_id=None, econ_id=0, dem_id=0):
         __table_args__ = {'schema': 'defm'}
         # define columns for the table
         id = Column(Integer, primary_key=True)
-        economic_secnario_id = Column(Integer)
+        economic_scenario_id = Column(Integer)
         demographic_scenario_id = Column(Integer)
 
     #metadata = MetaData(schema="defm")
@@ -43,7 +43,7 @@ def new_run(name='runs', run_id=None, econ_id=0, dem_id=0):
 
     # Insert versions in database
     model_run = Run(
-        economic_secnario_id=econ_id,
+        economic_scenario_id=econ_id,
         demographic_scenario_id=dem_id)
 
     session.add(model_run)
