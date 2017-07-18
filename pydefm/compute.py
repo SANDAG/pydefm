@@ -196,39 +196,37 @@ def births_sum(df, sim_year):
     """
     df = df.reset_index(drop=False)
 
-    df = df[['yr', 'race_ethn', 'mildep','type','births_m','births_f']]
+    df = df[['yr', 'race_ethn', 'mildep', 'type', 'births_m', 'births_f']]
 
-    births_grouped = df.groupby(['yr', 'race_ethn', 'mildep',
-                              'type'], as_index=False).sum()
+    births_grouped = df.groupby(['yr', 'race_ethn', 'mildep', 'type'],
+                                as_index=False).sum()
 
     male_births = births_grouped.copy()
     male_births.rename(columns={'births_m': 'persons'}, inplace=True)
     male_births['sex'] = 'M'
     male_births['age'] = 0
-    male_births = male_births.set_index(['age','race_ethn','sex'])
-    male_births = male_births.drop('births_f',1)
+    male_births = male_births.set_index(['age', 'race_ethn', 'sex'])
+    male_births = male_births.drop('births_f', 1)
 
     female_births = births_grouped.copy()
     female_births.rename(columns={'births_f': 'persons'}, inplace=True)
     female_births['sex'] = 'F'
     female_births['age'] = 0
-    female_births = female_births.set_index(['age','race_ethn','sex'])
-    female_births = female_births.drop('births_m',1)
+    female_births = female_births.set_index(['age', 'race_ethn', 'sex'])
+    female_births = female_births.drop('births_m', 1)
 
     births_mf = pd.concat([male_births, female_births], axis=0)
 
     births_mf['households'] = 0  # temp ignore households
 
     # no births for this special case
-    births_mf = births_mf[-births_mf['type'].isin(['COL','MIL','INS','OTH'])]
+    births_mf = births_mf[-births_mf['type'].isin(['COL', 'MIL', 'INS',
+                                                   'OTH'])]
 
     newborns = births_mf[births_mf.persons != 0].copy()
     newborns.rename(columns={'persons': 'newborns'}, inplace=True)
     newborns = newborns.drop('households', 1)
 
-   # log.insert_run('defm.db', db_id, newborns, 'newborns')
-#    log.insert_run('newborns.db', db_id, births_mf, 'newborns_' +
-#                   str(sim_year))
     births_mf = births_mf.drop('yr', 1)
 
     # SPECIAL CASE:
@@ -236,7 +234,8 @@ def births_sum(df, sim_year):
     # next year ( base_population.type="HP" and base_population.mildep="Y")
     # keep rows in which either type != 'HP' OR mildep != 'Y'
     # which results in dropping rows  where type = 'HP' AND mildep = 'Y'
-    births_mf = births_mf[((births_mf.type != 'HP') | (births_mf.mildep != 'Y'))]
+    births_mf = births_mf[((births_mf.type != 'HP') |
+                           (births_mf.mildep != 'Y'))]
     births_mf.rename(columns={'persons': 'new_born'}, inplace=True)
 
     return births_mf
