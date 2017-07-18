@@ -71,7 +71,7 @@ def final_pop():
 
 @pytest.fixture
 def random_numbers():
-    return pd.read_csv('tests/data/newborns/random_numbers_2026.csv',index_col=[0,1,2])
+    return pd.read_csv('tests/data/newborns/random_numbers.csv',index_col=[0,1,2])
 
 @pytest.fixture
 def births():
