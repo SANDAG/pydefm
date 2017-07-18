@@ -69,6 +69,22 @@ def final_pop():
     return pd.read_csv('tests/data/population/final_population.csv',index_col=[0,1,2],dtype = {'persons': np.float64})
 
 
+@pytest.fixture
+def random_numbers():
+    return pd.read_csv('tests/data/newborns/random_numbers_2026.csv',index_col=[0,1,2])
+
+@pytest.fixture
+def births():
+    return pd.read_csv('tests/data/newborns/births.csv',index_col=[0,1,2],dtype = {
+                                            'births_rounded':  np.float64,
+                                            'births_f': np.float64})
+
+@pytest.fixture
+def pop_w_birth_rates():
+    return pd.read_csv('tests/data/population/non_migrating_pop_w_birth_rates.csv',index_col=[0,1,2])
+
+
+
 def test_in_migrating_population(pop_w_mig_rates, pop_in):
     result = compute.in_migrating_population(pop_w_mig_rates)
     tm.assert_frame_equal(result, pop_in)
@@ -116,3 +132,7 @@ def test_new_pop(newborns_and_in_migration, new_pop):
 def test_final_population(non_mig_and_new, final_pop):
     result = compute.final_population(non_mig_and_new)
     tm.assert_frame_equal(result, final_pop)
+
+def test_births_all(pop_w_birth_rates,random_numbers,births):
+    result = compute.births_all(pop_w_birth_rates,random_numbers,'non_mig_pop')
+    tm.assert_frame_equal(result, births)
