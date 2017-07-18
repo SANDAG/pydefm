@@ -284,7 +284,7 @@ class NewBornPopulation(luigi.Task):
         death_rates = pd.read_hdf('temp/data.h5', 'death_rates')
         death_rates = death_rates[(death_rates['yr'] == self.year)]
         # sum newborn population across cohorts
-        newborn = compute.births_sum(births_per_cohort, self.year)
+        newborn = cp.births_sum(births_per_cohort, self.year)
 
         newborn = newborn.join(death_rates)
         newborn['new_deaths'] = (newborn['new_born'] * newborn['death_rate']).round()

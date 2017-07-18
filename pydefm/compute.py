@@ -172,3 +172,71 @@ def births_all(b_df, rand_df=None, pop_col='persons'):
     b_df['births_f'] = (b_df['births_rounded'] - b_df['births_m']).round()
 
     return b_df
+
+
+def births_sum(df, sim_year):
+    """
+    Sum births over all the ages in a given cohort
+    Set birth age to zero and reset DataFrame index
+
+    Parameters
+    ----------
+    df : pandas DataFrame
+        male and female births for each cohort and non-migrating population
+    db_id : int
+        primary key for current simulation
+    sim_year : int
+        year being simulated
+
+    Returns
+    -------
+    births_age0 : pandas DataFrame
+        births summed across age for each cohort
+
+    """
+    df = df.reset_index(drop=False)
+
+    df = df[['yr', 'race_ethn', 'mildep','type','births_m','births_f']]
+
+    births_grouped = df.groupby(['yr', 'race_ethn', 'mildep',
+                              'type'], as_index=False).sum()
+
+    male_births = births_grouped.copy()
+    male_births.rename(columns={'births_m': 'persons'}, inplace=True)
+    male_births['sex'] = 'M'
+    male_births['age'] = 0
+    male_births = male_births.set_index(['age','race_ethn','sex'])
+    male_births = male_births.drop('births_f',1)
+
+    female_births = births_grouped.copy()
+    female_births.rename(columns={'births_f': 'persons'}, inplace=True)
+    female_births['sex'] = 'F'
+    female_births['age'] = 0
+    female_births = female_births.set_index(['age','race_ethn','sex'])
+    female_births = female_births.drop('births_m',1)
+
+    births_mf = pd.concat([male_births, female_births], axis=0)
+
+    births_mf['households'] = 0  # temp ignore households
+
+    # no births for this special case
+    births_mf = births_mf[-births_mf['type'].isin(['COL','MIL','INS','OTH'])]
+
+    newborns = births_mf[births_mf.persons != 0].copy()
+    newborns.rename(columns={'persons': 'newborns'}, inplace=True)
+    newborns = newborns.drop('households', 1)
+
+   # log.insert_run('defm.db', db_id, newborns, 'newborns')
+#    log.insert_run('newborns.db', db_id, births_mf, 'newborns_' +
+#                   str(sim_year))
+    births_mf = births_mf.drop('yr', 1)
+
+    # SPECIAL CASE:
+    # Births are estimated & reported out, but are not carried over into the
+    # next year ( base_population.type="HP" and base_population.mildep="Y")
+    # keep rows in which either type != 'HP' OR mildep != 'Y'
+    # which results in dropping rows  where type = 'HP' AND mildep = 'Y'
+    births_mf = births_mf[((births_mf.type != 'HP') | (births_mf.mildep != 'Y'))]
+    births_mf.rename(columns={'persons': 'new_born'}, inplace=True)
+
+    return births_mf
