@@ -83,6 +83,14 @@ def births():
 def pop_w_birth_rates():
     return pd.read_csv('tests/data/population/non_migrating_pop_w_birth_rates.csv',index_col=[0,1,2])
 
+@pytest.fixture
+def births_all():
+    return pd.read_csv('tests/data/newborns/births_all.csv',index_col=[0,1,2])
+
+@pytest.fixture
+def newborns():
+    return pd.read_csv('tests/data/newborns/newborns.csv',index_col=[0,1,2])
+
 
 
 def test_in_migrating_population(pop_w_mig_rates, pop_in):
@@ -136,3 +144,8 @@ def test_final_population(non_mig_and_new, final_pop):
 def test_births_all(pop_w_birth_rates,random_numbers,births):
     result = compute.births_all(pop_w_birth_rates,random_numbers,'non_mig_pop')
     tm.assert_frame_equal(result, births)
+
+def test_births_sum(newborns,births_all):
+    year = 2010
+    result = compute.births_sum(births_all,year)
+    tm.assert_frame_equal(result, newborns)
