@@ -43,7 +43,7 @@ def non_migrating_population(pop, out_pop):
 
 def dead_population(pop):
     pop = pop[(pop['type'] == 'HHP') & (pop['mildep'] == 'N')]
-    pop = pop.fillna(1)
+    pop = pop.fillna(1) # for age 101, no rates
     pop['deaths'] = (pop['non_mig_pop'] * pop['death_rate']).round()
     return pop[['deaths']]
 
