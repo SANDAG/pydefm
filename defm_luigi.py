@@ -27,11 +27,11 @@ class Population(luigi.Task):
         return luigi.LocalTarget('temp/data.h5')
 
     def run(self):
-
+        # create file only first year, exists in subsequent years
         my_file = Path('temp/data.h5')
         if my_file.is_file():
             print'File exists'
-        else:
+        else: # only first year
             db_run_id = log.new_run(dem_id=self.dem_id, econ_id=self.econ_id)
             run_id = pd.Series([db_run_id])
             run_id.to_hdf('temp/data.h5', 'run_id',  mode='a')
@@ -44,6 +44,8 @@ class Population(luigi.Task):
             pop = extract.create_df('population', 'population_table', rate_id=dem_sim_rates.base_population_id[0])
             pop.to_hdf('temp/data.h5', 'pop', mode='a')
 
+            # Create function here and test
+            # to get ratio of INS and OTH to HHP to keep constant
             pop2 = pop[(pop['type'] == 'HHP')]
             pop2 = pop2.reset_index(drop=False)
 
@@ -224,6 +226,7 @@ class DeadPopulation(luigi.Task):
 
     def run(self):
         death_rates = pd.read_hdf('temp/data.h5', 'death_rates')
+        # move to function call
         death_rates = death_rates[(death_rates['yr'] == self.year)]
         pop = pd.read_hdf('temp/data.h5', 'non_mig_pop')
         pop = pop.join(death_rates, how='left')
