@@ -68,7 +68,7 @@ class Population(luigi.Task):
 
             summary_df = pd.DataFrame(population_summary)
             summary_df.to_sql(name='population_summary', con=engine, schema='defm', if_exists='append', index=False)
-            pop['yr'] = 2010
+            pop['yr'] = self.year - 1
             pop['run_id'] = db_run_id
             pop.to_sql(name='population', con=engine, schema='defm', if_exists='append', index=True)
 
