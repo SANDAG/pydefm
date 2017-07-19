@@ -22,10 +22,6 @@ def new_run(name='runs', run_id=None, econ_id=0, dem_id=0):
 
     #metadata = MetaData(schema="defm")
 
-    db_dir = 'results/'
-    if not os.path.exists(db_dir):
-
-        os.makedirs(db_dir)
 
     engine = create_engine(get_connection_string("model_config.yml", 'output_database')).execution_options(
         schema_translate_map={
@@ -37,9 +33,6 @@ def new_run(name='runs', run_id=None, econ_id=0, dem_id=0):
 
     db_session = sessionmaker(bind=engine)
     session = db_session()
-
-    # Rate versions from yml file
-    rate_versions = util.yaml_to_dict('model_config.yml', 'rate_versions')
 
     # Insert versions in database
     model_run = Run(
