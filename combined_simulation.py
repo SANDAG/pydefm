@@ -58,6 +58,7 @@ def my_form_post():
     econ = request.form['econ']
     start_year = request.form['starty']
     end_year = request.form['endy']
+    os.system("luigid")
 
     luigi.run(main_task_cls=CombinedSimulation, cmdline_args=['--start=' + str(start_year), '--end=' + str(end_year), '--dem=' + str(dem), '--econ=' + str(econ)])
     os.system("bokeh serve bokeh_graphs.py")

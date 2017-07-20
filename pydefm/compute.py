@@ -42,10 +42,17 @@ def non_migrating_population(pop, out_pop):
 
 
 def dead_population(pop):
-    pop = pop[(pop['type'] == 'HHP') & (pop['mildep'] == 'N')]
+    # pop = pop[(pop['type'] == 'HHP') & (pop['mildep'] == 'N')]
     pop = pop.fillna(1) # for age 101, no rates
     pop['deaths'] = (pop['non_mig_pop'] * pop['death_rate']).round()
-    return pop[['deaths']]
+    pop = pop.reset_index(drop=False)
+    pop['mild_type'] = pop[['type', 'mildep']].apply(lambda x: '_'.join(x), axis=1)
+    pop = pd.pivot_table(pop, values='deaths',
+                            index=['age', 'race_ethn', 'sex'],
+                            columns=['mild_type'])
+    pop.rename(columns={'HHP_N': 'deaths_hhp_non_mil'}, inplace=True)
+
+    return pop
 
 '''
 def new_born_population(pop):
@@ -56,9 +63,9 @@ def new_born_population(pop):
 
 def non_migrating_survived_pop(pop, deaths):
     pop = pop.join(deaths, how='left')
-    pop.loc[pop['type'].isin(['COL', 'INS', 'MIL', 'OTH']), ['deaths']] = 0
-    pop.loc[pop['mildep'].isin(['Y']), ['deaths']] = 0
-    pop['non_mig_survived_pop'] = (pop['non_mig_pop'] - pop['deaths']).round()
+    pop.loc[pop['type'].isin(['COL', 'INS', 'MIL', 'OTH']), ['deaths_hhp_non_mil']] = 0
+    pop.loc[pop['mildep'].isin(['Y']), ['deaths_hhp_non_mil']] = 0
+    pop['non_mig_survived_pop'] = (pop['non_mig_pop'] - pop['deaths_hhp_non_mil']).round()
     return pop
 
 
@@ -239,3 +246,16 @@ def births_sum(df, sim_year):
     births_mf.rename(columns={'persons': 'new_born'}, inplace=True)
 
     return births_mf
+
+
+def compute_ins_oth_rate(pop):
+
+    pop = pop[(pop['type'] == 'HHP')]
+    pop = pop.reset_index(drop=False)
+
+    pop = pd.DataFrame(pop['persons'].groupby([pop['age'], pop['race_ethn'], pop['sex']]).sum())
+    pop.rename(columns={'persons': 'persons_sum'}, inplace=True)
+
+    pop = pop.join(pop)
+    pop['rates'] = np.where(pop['type'].isin(['INS', 'OTH']), (pop['persons'] / pop['persons_sum']), 0)
+    return pop[['mildep', 'type', 'rates']]

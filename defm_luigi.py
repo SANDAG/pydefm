@@ -46,16 +46,8 @@ class Population(luigi.Task):
 
             # Create function here and test
             # to get ratio of INS and OTH to HHP to keep constant
-            pop2 = pop[(pop['type'] == 'HHP')]
-            pop2 = pop2.reset_index(drop=False)
+            rates = cp.compute_ins_oth_rate(pop)
 
-            pop2 = pd.DataFrame(pop2['persons'].groupby([pop2['age'], pop2['race_ethn'], pop2['sex']]).sum())
-            pop2.rename(columns={'persons': 'persons_sum'}, inplace=True)
-
-            pop2 = pop.join(pop2)
-            pop2['rates'] = np.where(pop2['type'].isin(['INS', 'OTH']), (pop2['persons'] / pop2['persons_sum']), 0)
-
-            rates = pop2[['mildep', 'type', 'rates']]
             rates.to_hdf('temp/data.h5', 'ins_oth_rates', mode='a')
 
             engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
@@ -65,7 +57,7 @@ class Population(luigi.Task):
                                        'Population': pop['persons'].sum(),
                                        'mig_out': 0,
                                        'mig_in': 0,
-                                       'deaths': 0,
+                                       'deaths_hhp_non_mil': 0,
                                        'new_born': 0})
 
             summary_df = pd.DataFrame(population_summary)
@@ -297,7 +289,7 @@ class NewBornPopulation(luigi.Task):
         dead_pop = dead_pop.join(newborn['new_deaths'])
 
         dead_pop = dead_pop.fillna(0)
-        dead_pop['deaths'] = (dead_pop['deaths'] + dead_pop['new_deaths']).round()
+        dead_pop['deaths_hhp_non_mil'] = (dead_pop['deaths_hhp_non_mil'] + dead_pop['new_deaths']).round()
 
         dead_pop = dead_pop.drop(['new_deaths'], 1)
 
@@ -432,7 +424,7 @@ class ExportTables(luigi.Task):
                                    'Population': pop['persons'].sum(),
                                    'mig_out': mig_out['mig_Dout'].sum() + mig_out['mig_Fout'].sum(),
                                    'mig_in': mig_in['mig_Din'].sum() + mig_in['mig_Fin'].sum(),
-                                   'deaths': dead_pop['deaths'].sum(),
+                                   'deaths_hhp_non_mil': dead_pop['deaths_hhp_non_mil'].sum(),
                                    'new_born': new_born['new_born'].sum()})
 
         for table in [pop, mig_out, mig_in, dead_pop, new_born]:
