@@ -49,4 +49,4 @@ desktop.ini
 ################
 /model_config.yml
 .coverage
-.h5
+*.h5
