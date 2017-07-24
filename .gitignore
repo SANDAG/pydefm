@@ -33,7 +33,6 @@
 Thumbs.db
 desktop.ini
 
-
 # PyCharm #
 ###########
 .idea/
@@ -46,8 +45,8 @@ desktop.ini
 .settings
 .metadata
 
-
-# Python files #
+# Other files #
 ################
 /model_config.yml
 .coverage
+.h5
