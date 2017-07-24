@@ -250,12 +250,12 @@ def births_sum(df, sim_year):
 
 def compute_ins_oth_rate(pop):
 
-    pop = pop[(pop['type'] == 'HHP')]
-    pop = pop.reset_index(drop=False)
+    pop2 = pop[(pop['type'] == 'HHP')]
+    pop2 = pop2.reset_index(drop=False)
 
-    pop = pd.DataFrame(pop['persons'].groupby([pop['age'], pop['race_ethn'], pop['sex']]).sum())
-    pop.rename(columns={'persons': 'persons_sum'}, inplace=True)
+    pop2 = pd.DataFrame(pop2['persons'].groupby([pop2['age'], pop2['race_ethn'], pop2['sex']]).sum())
+    pop2.rename(columns={'persons': 'persons_sum'}, inplace=True)
 
-    pop = pop.join(pop)
-    pop['rates'] = np.where(pop['type'].isin(['INS', 'OTH']), (pop['persons'] / pop['persons_sum']), 0)
-    return pop[['mildep', 'type', 'rates']]
+    pop2 = pop.join(pop2)
+    pop2['rates'] = np.where(pop2['type'].isin(['INS', 'OTH']), (pop2['persons'] / pop2['persons_sum']), 0)
+    return pop2[['mildep', 'type', 'rates']]
