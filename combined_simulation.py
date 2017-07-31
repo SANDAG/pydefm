@@ -1,5 +1,5 @@
 from flask import Flask
-from flask import request
+from flask import request, redirect
 from flask import render_template
 import os
 import luigi
@@ -11,10 +11,13 @@ from db import extract
 from db import sql
 from forecast import util
 import shutil
+import pandas
 import luigi.contrib.hadoop
 from sqlalchemy import create_engine
 from pysandag.database import get_connection_string
 from pysandag import database
+import warnings
+warnings.filterwarnings('ignore', category=pandas.io.pytables.PerformanceWarning)
 
 
 class CombinedSimulation(luigi.Task):

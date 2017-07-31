@@ -429,8 +429,8 @@ class ExportTables(luigi.Task):
 
         for table in [pop, mig_out, mig_in, dead_pop, new_born]:
             # df = pd.read_hdf('temp/data.h5', table)
-            table['yr'] = self.year
-            table['run_id'] = run_id
+            table = table.assign(yr=self.year)
+            table = table.assign(run_id=run_id)
 
         pop.to_sql(name='population', con=engine, schema='defm', if_exists='append', index=True)
         mig_out.to_sql(name='mig_out', con=engine, schema='defm', if_exists='append', index=True)

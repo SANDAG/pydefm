@@ -85,7 +85,8 @@ def aged_pop(non_mig_survived_pop):
 
     temp = non_mig_survived_pop[(non_mig_survived_pop['increment'] == 1) &
                                 (non_mig_survived_pop['age'] == 0)]
-    temp['non_mig_survived_pop'] = 0
+    temp = temp.assign(non_mig_survived_pop=0)
+
     non_mig_survived_pop['age'] = non_mig_survived_pop['age'] + \
         non_mig_survived_pop['increment']
     non_mig_survived_pop = non_mig_survived_pop.append(temp)
@@ -100,7 +101,7 @@ def aged_pop(non_mig_survived_pop):
                                       temp_2['type'],
                                       temp_2['mildep']]).sum())
     temp_2_p = temp_2_p.join(temp_2_h)
-    temp_2_p['age'] = 101
+    temp_2_p = temp_2_p.assign(age=101)
     temp_2_p = temp_2_p.reset_index(drop=False)
 
     non_mig_survived_pop = non_mig_survived_pop[
