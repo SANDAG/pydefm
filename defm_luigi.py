@@ -13,7 +13,8 @@ import pydefm.compute as cp
 import numpy as np
 from forecast import util
 from pydefm import utils
-
+import psycopg2
+import csv
 
 class Population(luigi.Task):
     year = luigi.Parameter()
@@ -432,7 +433,19 @@ class ExportTables(luigi.Task):
             table = table.assign(yr=self.year)
             table = table.assign(run_id=run_id)
 
-        pop.to_sql(name='population', con=engine, schema='defm', if_exists='append', index=True)
+        #pop.to_sql(name='population', con=engine, schema='defm', if_exists='append', index=True)
+        pop.to_csv('data/pop.csv')
+        csv_data = csv.reader(file('data/pop.csv'))
+        database = psycopg2.connect(get_connection_string("model_config.yml", 'output_database'))
+        cursor = database.cursor()
+        for row in csv_data:
+            cursor.execute("INSERT INTO defm.population(age, race_ethn, sex, type, mildep, persons, households, yr,"
+                           " run_id VALUES (%s, %s, %s, %s, %s, %s, %s,%s, v)", row)
+
+        cursor.close()
+        database.commit()
+        database.close()
+
         mig_out.to_sql(name='mig_out', con=engine, schema='defm', if_exists='append', index=True)
         mig_in.to_sql(name='mig_in', con=engine, schema='defm', if_exists='append', index=True)
         dead_pop.to_sql(name='dead_pop', con=engine, schema='defm', if_exists='append', index=True)
