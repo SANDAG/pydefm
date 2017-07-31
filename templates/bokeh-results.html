@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<title>SanDE Simulation</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+  <script language="JavaScript">
+    function showInput() {
+        document.getElementById('display').innerHTML ='Running simulation with Demographic Scenario ID: ' +
+                    document.getElementById("dem_id").value + ' Economic Scenario ID: ' +
+                    document.getElementById("econ_id").value + ' , from ' +   document.getElementById("start_y").value +
+                    ' to ' +   document.getElementById("end_y").value;
+    }
+  </script>
+
+<body class="page_bg"> >
+
+<!-- Navbar (sit on top) -->
+<div class="w3-top">
+  <div class="w3-bar w3-white w3-wide w3-padding w3-card-2">
+      <img src="https://www.sdmts.com/sites/default/files/sandag_logo.png" alt="Test Image" width="150" height="75"
+      <a href= "#home" class="w3-bar-item w3-button"> Demographic and Economic Forecast</a>
+
+    <!-- Float links to the rigef. Hide them on small screens -->
+    <div class="w3-right w3-hide-small">
+      <a href="#Demographic Results" class="w3-bar-item w3-button">Demographic</a>
+      <a href="#Economic Results" class="w3-bar-item w3-button">Economic</a>
+    </div>
+  </div>
+</div>
+
+<!-- Header -->
+
+<!-- Page content -->
+<div class="w3-content w3-padding" style="max-width:5000px">
+
+  <!-- Project Section -->
+
+        <div class="w3-container w3-padding-32" id="Demographic Results">
+
+    <div class="w3-row-padding">
+                              <br><br>
+
+            <h3 class="w3-border-bottom w3-border-light-grey w3-padding-16">Demographic Results</h3>
+
+            <div class="w3-col l3 m6 w3-margin-bottom">
+
+     <div class="w3-third">
+
+    <input class="w3-button w3-black w3-section" type="submit" value="1. Population" onclick="window.open('http://127.0.0.1:5000/bokeh/pop')">
+               </div>
+
+
+            <input class="w3-button w3-black w3-section" type="submit" value="2. Population by race" onclick="window.open('http://127.0.0.1:5000/bokeh/pop_age')">
+               </div>
+</div>
+</div>
+
+        <div class="w3-container w3-padding-32" id="Economic Results">
+
+    <div class="w3-row-padding">
+                              <br><br>
+
+            <h3 class="w3-border-bottom w3-border-light-grey w3-padding-16">Economic Results</h3>
+
+            <div class="w3-col l3 m6 w3-margin-bottom">
+
+     <div class="w3-third">
+
+    <input class="w3-button w3-black w3-section" type="submit" value="1. Personal Income" onclick="window.open('http://localhost:8082/')">
+               </div>
+</div>
+</div>
+            </div>
+<!-- Footer -->
+
+
+</body>
+</html>
