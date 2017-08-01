@@ -185,6 +185,62 @@ def my_form_post_pop_by_race():
     )
     return html
 
+
+econ_sql = '''SELECT yr as "Year",
+                     labor_force,
+                     unemployed,
+                     work_force,
+                     work_force_outside,
+                     work_force_local,
+                     jobs_local,
+                     jobs_total,
+                     jobs_external,
+                     avg_wage,
+                     jobs_total_wages,
+                     jobs_local_wages,
+                     jobs_external_wages,
+                     wf_outside_wages,
+                     military_income,
+                     unearned_income,
+                     "Selfemp_Income",
+                     personal_income,
+                     taxable_retail_sales
+                     FROM defm.emp_summary WHERE run_id = ''' + str(run_id) + '''ORDER BY yr'''
+
+econ_df = pd.read_sql(econ_sql, defm_engine, index_col='Year')
+econ_cat = econ_df.columns[0:].values.tolist()
+
+
+@app.route('/bokeh/econ')
+def my_form_post_econ():
+
+    # Determine the selected feature
+    current_feature_name = request.args.get("feature_name")
+
+    if current_feature_name is None:
+        current_feature_name = "personal_income"
+
+    # Create the plot
+    plot1 = create_figure(econ_df, current_feature_name)
+    # Embed plot into HTML via Flask Render
+    # grab the static resources
+    js_resources = INLINE.render_js()
+    css_resources = INLINE.render_css()
+
+    # render template
+    script, div = components(plot1)
+    html = render_template(
+        'result-form-econ.html',
+        plot_script=script,
+        plot_div=div,
+        js_resources=js_resources,
+        css_resources=css_resources,
+        feature_names=econ_cat,
+        current_feature_name=current_feature_name
+    )
+    return html
+
+
 if __name__ == '__main__':
     shutil.rmtree('temp')
     os.makedirs('temp')
