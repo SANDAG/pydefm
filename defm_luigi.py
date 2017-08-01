@@ -429,22 +429,22 @@ class ExportTables(luigi.Task):
                                    'new_born': new_born['new_born'].sum()})
 
         for table in [pop, mig_out, mig_in, dead_pop, new_born]:
-            # df = pd.read_hdf('temp/data.h5', table)
-            table = table.assign(yr=self.year)
-            table = table.assign(run_id=run_id)
+            table['yr'] = self.year
+            table['run_id'] = run_id
 
-        #pop.to_sql(name='population', con=engine, schema='defm', if_exists='append', index=True)
-        pop.to_csv('data/pop.csv')
-        csv_data = csv.reader(file('data/pop.csv'))
-        database = psycopg2.connect(get_connection_string("model_config.yml", 'output_database'))
-        cursor = database.cursor()
-        for row in csv_data:
-            cursor.execute("INSERT INTO defm.population(age, race_ethn, sex, type, mildep, persons, households, yr,"
-                           " run_id VALUES (%s, %s, %s, %s, %s, %s, %s,%s, v)", row)
+        pop.to_sql(name='population', con=engine, schema='defm', if_exists='append', index=True)
 
-        cursor.close()
-        database.commit()
-        database.close()
+        # pop.to_csv('temp/pop.csv',  header=False)
+        # csv_data = csv.reader(file('temp/pop.csv'))
+        # database = psycopg2.connect(get_connection_string("model_config.yml", 'output_database'))
+        # cursor = database.cursor()
+        # for row in csv_data:
+        #     cursor.execute("INSERT INTO defm.population(age, race_ethn, sex, type, mildep, persons, households, yr,"
+        #                    " run_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)", row)
+#
+        # cursor.close()
+        # database.commit()
+        # database.close()
 
         mig_out.to_sql(name='mig_out', con=engine, schema='defm', if_exists='append', index=True)
         mig_in.to_sql(name='mig_in', con=engine, schema='defm', if_exists='append', index=True)

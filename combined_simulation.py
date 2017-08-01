@@ -55,7 +55,7 @@ app = Flask(__name__)
 
 
 def create_figure(df, current_feature_name):
-    p = figure(width=600, height=400, tools=[HoverTool(), BoxZoomTool(), WheelZoomTool(), PanTool(), SaveTool()],
+    p = figure(width=600, height=400, tools=[BoxZoomTool(), WheelZoomTool(), PanTool(), SaveTool()],
                title=current_feature_name, y_axis_label=current_feature_name,
                  x_axis_label="Year")
     p.line(df.index.tolist(), df[current_feature_name], line_width=2, legend=False, line_color="red")
@@ -63,11 +63,11 @@ def create_figure(df, current_feature_name):
     source = ColumnDataSource(
         {'x': df.index.values.tolist(), 'y': df[current_feature_name].values, 'y2': df[current_feature_name].map('{:,.0f}'.format).tolist()})
 
-    p.scatter('x', 'y', source=source, fill_alpha=0, line_alpha=.95, line_color="black", fill_color="blue")
-    hover = p.select(dict(type=HoverTool))
-    hover.tooltips = [("Year ", "@x"),  (current_feature_name, "@y2")]
-    hover.mode = 'mouse'
-    hover.line_policy = 'nearest'
+    p.scatter('x', 'y', source=source, fill_alpha=0, line_alpha=.95, line_color="black", fill_color="blue", name='scat')
+    hover = HoverTool(names=["scat"],
+                      tooltips=[("Year ", "@x"), (current_feature_name, "@y2")]
+                      )
+    p.add_tools(hover)
     return p
 
 
