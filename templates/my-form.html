@@ -24,7 +24,7 @@
     <!-- Float links to the rigef. Hide them on small screens -->
     <div class="w3-right w3-hide-small">
       <a href="#Existing Scenario" class="w3-bar-item w3-button">Existing Scenario</a>
-      <a href="#New Scenario" class="w3-bar-item w3-button">New Scenario</a>
+      <a href="#View Demographic Rates" class="w3-bar-item w3-button">View Demographic Rates</a>
       <a href="#Instructions" class="w3-bar-item w3-button">Instructions</a>
     </div>
   </div>
@@ -113,11 +113,12 @@
                </div>
 
       <div class="w3-third">
-          <br>
+
                         </div>
 
 
               </div>
+    <input class="w3-button w3-black w3-section" type="submit" value="Track Luigi Task Flow" onclick="window.open('http://localhost:8082/')">
 
 
   <p><span id='display'></span></p>
@@ -132,14 +133,22 @@
 
      <div class="w3-third">
 
-    <input class="w3-button w3-black w3-section" type="submit" value="Track Luigi Task Flow" onclick="window.open('http://localhost:8082/')">
                </div>
 
   <!-- About Section -->
-  <div class="w3-container w3-padding-32" id="New Scenario">
-    <h3 class="w3-border-bottom w3-border-light-grey w3-padding-16">New Scenario</h3>
-    <p>Coming Soon....
-    </p>
+  <div class="w3-container w3-padding-32" id="View Demographic Rates">
+    <h3 class="w3-border-bottom w3-border-light-grey w3-padding-16">View Demographic Rates</h3>
+            <div class="w3-col l3 m6 w3-margin-bottom">
+
+     <div class="w3-third">
+
+    <input class="w3-button w3-black w3-section" type="submit" value="Births" onclick="window.open('http://127.0.0.1:5000/birth_rates')">
+</div>
+           <div class="w3-third">
+                <input class="w3-button w3-black w3-section" type="submit" value="Deaths" onclick="window.open('http://127.0.0.1:5000/bokeh/death_rates')">
+                             </div>
+
+               </div>    </p>
   </div>
 
 

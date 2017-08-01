@@ -23,7 +23,7 @@
 
     <!-- Float links to the rigef. Hide them on small screens -->
     <div class="w3-right w3-hide-small">
-      <a href="#Demographic Results" class="w3-bar-item w3-button">Population by Race Trends</a>
+      <a href="#Demographic Results" class="w3-bar-item w3-button">Birth Rates</a>
     </div>
   </div>
 </div>
@@ -41,29 +41,58 @@
 
   <!-- Project Section -->
 
-        <div class="w3-container w3-padding-32" id="Population by Race Graphs">
+        <div class="w3-container w3-padding-32" id="Birth Rates">
 
     <div class="w3-row-padding">
                               <br><br>
 
-            <h3 class="w3-border-bottom w3-border-light-grey w3-padding-16">Population by Race Trends</h3>
-                              <br>
-		 <h3 class="w3-padding-12">(Select below the graph you wish to see)</h3>
-		                              <br>
+            <h3 class="w3-border-bottom w3-border-light-grey w3-padding-16">Birth Rates</h3>
 
-		<form action="/bokeh/pop_race">
-<select name="feature_name">
-	{% for feature in feature_names %}
-		{% if feature == current_feature_name %}
-			<option selected value="{{ feature }}">{{ feature }}</option>
+     <div class="w3-col l3 m6 w3-margin-bottom">
+
+
+                <div class="w3-container w3-padding-32" id="projects">
+
+		<form action="/birth_rates">
+
+             <h5 class="w3-border-bottom w3-border-light-grey w3-padding-16">Rate ID</h5>
+<select name="rate">
+	{% for rate_id in rate_id_list %}
+		{% if rate_id == current_rate_id %}
+			<option selected value="{{ rate_id }}">{{ rate_id }}</option>
 		{% else %}
-			<option value="{{ feature }}">{{ feature }}</option>
+			<option value="{{ rate_id }}">{{ rate_id }}</option>
 		{% endif %}
 	{% endfor %}
 </select>
+                     <h5 class="w3-border-bottom w3-border-light-grey w3-padding-16">Age</h5>
+            <select name="age">
+	{% for age_id in age_list %}
+		{% if age_id == current_age %}
+			<option selected value="{{ age_id }}">{{ age_id }}</option>
+		{% else %}
+			<option value="{{ age_id }}">{{ age_id }}</option>
+		{% endif %}
+	{% endfor %}
+</select>
+                                 <h5 class="w3-border-bottom w3-border-light-grey w3-padding-16">Race</h5>
+            <select name="race">
+	{% for race_id in race_list %}
+		{% if race_id == current_race %}
+			<option selected value="{{ race_id }}">{{ race_id }}</option>
+		{% else %}
+			<option value="{{ race_id }}">{{ race_id }}</option>
+		{% endif %}
+	{% endfor %}
+</select>
+
+                                                  <br><br>
+
 <input type="submit">
 </form>
 		</div>
+			</div>
+        		</div>
 			</div>
 {{ plot_div|indent(4)|safe }}
 </div>

@@ -15,17 +15,22 @@ from sqlalchemy import create_engine
 from pysandag.database import get_connection_string
 import pandas as pd
 from bokeh.models import (
-    ColumnDataSource, HoverTool, BoxZoomTool, WheelZoomTool, PanTool, SaveTool
+    ColumnDataSource, HoverTool, BoxZoomTool, WheelZoomTool, PanTool, SaveTool, NumeralTickFormatter
 )
 from bokeh.charts import TimeSeries
 from bokeh.embed import components
 from db import sql
 from bokeh.resources import INLINE
 from bokeh.plotting import figure
-
+from pysandag import database
+from bokeh.palettes import Spectral4
+from bokeh.layouts import row
 import warnings
 warnings.filterwarnings('ignore', category=pandas.io.pytables.PerformanceWarning)
 defm_engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
+
+db_connection_string = database.get_connection_string('model_config.yml', 'in_db')
+sql_in_engine = create_engine(db_connection_string)
 
 in_query = getattr(sql, 'max_run_id')
 db_run_id = pd.read_sql(in_query, defm_engine, index_col=None)
@@ -68,6 +73,8 @@ def create_figure(df, current_feature_name):
                       tooltips=[("Year ", "@x"), (current_feature_name, "@y2")]
                       )
     p.add_tools(hover)
+    p.yaxis[0].formatter = NumeralTickFormatter(format="0,0.0")
+
     return p
 
 
@@ -82,6 +89,27 @@ def my_form():
     endyear = range(2012, 2051)
 
     return render_template("my-form.html", result1=dems, result2=econs, startyear=startyear, endyear=endyear)
+
+
+def create_figure_rate(df, rate_id, age, race, column_name):
+
+    df = df.loc[(df.rate_id == rate_id) & (df.age == age) & (df.race == race)]
+
+    p = figure(width=600, height=400, tools=[BoxZoomTool(), WheelZoomTool(), PanTool(), SaveTool()],
+               title=column_name, y_axis_label=column_name, x_axis_label="Year")
+
+    p.line(df.Year.tolist(), df[column_name], line_width=2, legend=False, line_color="red")
+
+    source = ColumnDataSource(
+        {'x': df.Year.tolist(), 'y': df[column_name].values, 'y2': df[column_name].map('{:,.5%}'.format).tolist()})
+
+    p.scatter('x', 'y', source=source, fill_alpha=0, line_alpha=.95, line_color="black", fill_color="blue", name='scat')
+    hover = HoverTool(names=["scat"],
+                      tooltips=[("Year ", "@x"), (column_name, "@y2")]
+                      )
+    p.add_tools(hover)
+    p.yaxis[0].formatter = NumeralTickFormatter(format="0.0000%")
+    return p
 
 
 @app.route('/', methods=['POST'])
@@ -108,7 +136,7 @@ results_sql = '''SELECT "Population" as "Population"
                         ,mig_in - mig_out as "Net Migration"
                         ,new_born as "Births"
                 FROM defm.population_summary
-                WHERE "Run_id" =''' + str(run_id)
+                WHERE "Run_id" =''' + str(run_id) + ''' ORDER BY "Year" '''
 results_df = pd.read_sql(results_sql, defm_engine, index_col='Year')
 feature_names = results_df.columns[0:].values.tolist()
 
@@ -153,10 +181,10 @@ race_sql = '''SELECT  yr as "Year",
         WHERE run_id=''' + str(run_id) + ''' GROUP BY yr  ORDER BY yr'''
 
 race_df = pd.read_sql(race_sql, defm_engine, index_col='Year')
-race_cat = race_df.columns[0:].values.tolist()
+race_cat1 = race_df.columns[0:].values.tolist()
 
 
-@app.route('/bokeh/pop_age')
+@app.route('/bokeh/pop_race')
 def my_form_post_pop_by_race():
 
     # Determine the selected feature
@@ -171,16 +199,25 @@ def my_form_post_pop_by_race():
     # grab the static resources
     js_resources = INLINE.render_js()
     css_resources = INLINE.render_css()
+    p2 = figure(width=600, height=400, tools=[BoxZoomTool(), WheelZoomTool(), PanTool(), SaveTool()],
+               title="All Races",  x_axis_label="Year")
+
+    for r, color in zip(race_cat1, Spectral4):
+        p2.line(race_df.index.tolist(), race_df[r], line_width=2, legend=r, color=color)
+        p2.yaxis[0].formatter = NumeralTickFormatter(format="0,0.0")
+
+    p2.legend.location = "top_left"
+    p2.legend.background_fill_alpha = 0.5
 
     # render template
-    script, div = components(plot1)
+    script, div = components(row(plot1, p2))
     html = render_template(
         'result-form-pop-race.html',
         plot_script=script,
         plot_div=div,
         js_resources=js_resources,
         css_resources=css_resources,
-        feature_names=race_cat,
+        feature_names=race_cat1,
         current_feature_name=current_feature_name
     )
     return html
@@ -205,7 +242,7 @@ econ_sql = '''SELECT yr as "Year",
                      "Selfemp_Income",
                      personal_income,
                      taxable_retail_sales
-                     FROM defm.emp_summary WHERE run_id = ''' + str(run_id) + '''ORDER BY yr'''
+                     FROM defm.emp_summary WHERE run_id = ''' + str(run_id) + ''' ORDER BY yr'''
 
 econ_df = pd.read_sql(econ_sql, defm_engine, index_col='Year')
 econ_cat = econ_df.columns[0:].values.tolist()
@@ -240,7 +277,63 @@ def my_form_post_econ():
     )
     return html
 
+birth_sql = '''SELECT [birth_rate_id] as rate_id
+      ,[yr] as "Year"
+      ,[age]
+      ,[race]
+      ,[birth_rate]
+      FROM [isam].[demographic_rates].[birth_rates]
+      ORDER BY yr
+      '''
 
+
+birth_df = pd.read_sql(birth_sql, sql_in_engine, index_col=None)
+rate_id_cat = birth_df.rate_id.unique()
+age_cat = birth_df.age.unique()
+race_cat = birth_df.race.unique()
+
+
+@app.route('/birth_rates')
+def my_form_post_brith_rates():
+
+    # Determine the selected feature
+    current_rate_id = request.args.get("rate")
+    current_age = request.args.get("age")
+    current_race = request.args.get("race")
+
+    if current_rate_id is None:
+        current_rate_id = 101
+
+    if current_age is None:
+        current_age = 10
+
+    if current_race is None:
+        current_race = 'W'
+
+    # Create the plot
+    plot1 = create_figure_rate(birth_df, rate_id=int(current_rate_id), age=int(current_age), race=str(current_race),
+                               column_name='birth_rate')
+    # Embed plot into HTML via Flask Render
+    # grab the static resources
+    js_resources = INLINE.render_js()
+    css_resources = INLINE.render_css()
+
+    # render template
+    script, div = components(plot1)
+    html = render_template(
+        'birth-rates.html',
+        plot_script=script,
+        plot_div=div,
+        js_resources=js_resources,
+        css_resources=css_resources,
+        rate_id_list=rate_id_cat,
+        current_rate_id=current_rate_id,
+        age_list=age_cat,
+        current_age=current_age,
+        race_list=race_cat,
+        current_race=current_race
+    )
+    return html
 if __name__ == '__main__':
     shutil.rmtree('temp')
     os.makedirs('temp')
