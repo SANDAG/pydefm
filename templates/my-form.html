@@ -52,9 +52,9 @@
                     <h5 class="w3-border-bottom w3-border-light-grey w3-padding-16">Demographic Scenario ID</h5>
 
                  <select name="dem" id="dem_id">
-                 {% for value in result1 %}
+                 {% for key, value in result1 %}
 
-                        <option value="{{ value }}"> {{ value }}  </option>
+                        <option value="{{ key }}"> {{ value }}  </option>
 
                      {% endfor %}
                   </select>

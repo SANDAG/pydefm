@@ -262,7 +262,8 @@ SELECT [ur1_id]
   WHERE economic_simulation_id = %s'''
 
 dem_sim_ids = '''
-SELECT [demographic_simulation_id]
+SELECT [demographic_simulation_id],
+        desc_short
   FROM %s
   WHERE demographic_simulation_id != %s
   ORDER BY [demographic_simulation_id]'''

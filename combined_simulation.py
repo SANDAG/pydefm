@@ -83,11 +83,11 @@ def my_form():
 
     econ_sim_ids = extract.create_df('econ_sim_ids', 'econ_sim_ids_table', rate_id=0, index=None)
     dem_sim_ids = extract.create_df('dem_sim_ids', 'dem_sim_ids_table', rate_id=0, index=None)
-    dems = dem_sim_ids['demographic_simulation_id'].tolist()
+    dems = zip(dem_sim_ids['demographic_simulation_id'], dem_sim_ids['desc_short'])
     econs = econ_sim_ids['economic_simulation_id'].tolist()
     startyear = range(2011, 2050)
     endyear = range(2012, 2051)
-
+    print dems
     return render_template("my-form.html", result1=dems, result2=econs, startyear=startyear, endyear=endyear)
 
 
