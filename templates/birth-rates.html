@@ -23,7 +23,7 @@
 
     <!-- Float links to the rigef. Hide them on small screens -->
     <div class="w3-right w3-hide-small">
-      <a href="#Demographic Results" class="w3-bar-item w3-button">Birth Rates</a>
+      <a href="#Demographic Results" class="w3-bar-item w3-button">Fertility Rates</a>
     </div>
   </div>
 </div>
@@ -46,12 +46,10 @@
     <div class="w3-row-padding">
                               <br><br>
 
-            <h3 class="w3-border-bottom w3-border-light-grey w3-padding-16">Birth Rates</h3>
+            <h3 class="w3-border-bottom w3-border-light-grey w3-padding-16">Fertility Rates</h3>
 
      <div class="w3-col l3 m6 w3-margin-bottom">
 
-
-                <div class="w3-container w3-padding-32" id="projects">
 
 		<form action="/birth_rates">
 
@@ -65,32 +63,17 @@
 		{% endif %}
 	{% endfor %}
 </select>
-                     <h5 class="w3-border-bottom w3-border-light-grey w3-padding-16">Age</h5>
-            <select name="age">
-	{% for age_id in age_list %}
-		{% if age_id == current_age %}
-			<option selected value="{{ age_id }}">{{ age_id }}</option>
-		{% else %}
-			<option value="{{ age_id }}">{{ age_id }}</option>
-		{% endif %}
-	{% endfor %}
-</select>
-                                 <h5 class="w3-border-bottom w3-border-light-grey w3-padding-16">Race</h5>
-            <select name="race">
-	{% for race_id in race_list %}
-		{% if race_id == current_race %}
-			<option selected value="{{ race_id }}">{{ race_id }}</option>
-		{% else %}
-			<option value="{{ race_id }}">{{ race_id }}</option>
-		{% endif %}
-	{% endfor %}
-</select>
 
-                                                  <br><br>
+                                 <h5 class="w3-border-bottom w3-border-light-grey w3-padding-16">Race</h5>
+	{% for race_id in race_list %}
+                    <input type="checkbox" name="race_list1" value="{{ race_id }}" > {{ race_id }} <br>
+	{% endfor %}
+
+                                                  <br>
+                                                  <br>
 
 <input type="submit">
 </form>
-		</div>
 			</div>
         		</div>
 			</div>

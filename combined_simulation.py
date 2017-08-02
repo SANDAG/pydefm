@@ -91,9 +91,9 @@ def my_form():
     return render_template("my-form.html", result1=dems, result2=econs, startyear=startyear, endyear=endyear)
 
 
-def create_figure_rate(df, rate_id, age, race, column_name):
+def create_figure_rate(df, rate_id, race, column_name):
 
-    df = df.loc[(df.rate_id == rate_id) & (df.age == age) & (df.race == race)]
+    df = df.loc[(df.rate_id == rate_id) & (df.race == race)]
 
     p = figure(width=600, height=400, tools=[BoxZoomTool(), WheelZoomTool(), PanTool(), SaveTool()],
                title=column_name, y_axis_label=column_name, x_axis_label="Year")
@@ -101,14 +101,14 @@ def create_figure_rate(df, rate_id, age, race, column_name):
     p.line(df.Year.tolist(), df[column_name], line_width=2, legend=False, line_color="red")
 
     source = ColumnDataSource(
-        {'x': df.Year.tolist(), 'y': df[column_name].values, 'y2': df[column_name].map('{:,.5%}'.format).tolist()})
+        {'x': df.Year.tolist(), 'y': df[column_name].values, 'y2': df[column_name].map('{:,.5}'.format).tolist()})
 
     p.scatter('x', 'y', source=source, fill_alpha=0, line_alpha=.95, line_color="black", fill_color="blue", name='scat')
     hover = HoverTool(names=["scat"],
                       tooltips=[("Year ", "@x"), (column_name, "@y2")]
                       )
     p.add_tools(hover)
-    p.yaxis[0].formatter = NumeralTickFormatter(format="0.0000%")
+    p.yaxis[0].formatter = NumeralTickFormatter(format="0.00")
     return p
 
 
@@ -136,7 +136,7 @@ results_sql = '''SELECT "Population" as "Population"
                         ,mig_in - mig_out as "Net Migration"
                         ,new_born as "Births"
                 FROM defm.population_summary
-                WHERE "Run_id" =''' + str(run_id) + ''' ORDER BY "Year" '''
+                WHERE "Run_id" =''' + str(run_id) + ''' and yr >2010 ORDER BY "Year" '''
 results_df = pd.read_sql(results_sql, defm_engine, index_col='Year')
 feature_names = results_df.columns[0:].values.tolist()
 
@@ -178,7 +178,7 @@ race_sql = '''SELECT  yr as "Year",
         SUM(CASE WHEN race_ethn = 'W' THEN persons ELSE 0 END) as "White",
         SUM(CASE WHEN race_ethn = 'O' THEN persons ELSE 0 END) as "Other"
         FROM defm.population
-        WHERE run_id=''' + str(run_id) + ''' GROUP BY yr  ORDER BY yr'''
+        WHERE run_id=''' + str(run_id) + ''' and yr >2010 GROUP BY yr  ORDER BY yr'''
 
 race_df = pd.read_sql(race_sql, defm_engine, index_col='Year')
 race_cat1 = race_df.columns[0:].values.tolist()
@@ -279,17 +279,22 @@ def my_form_post_econ():
 
 birth_sql = '''SELECT [birth_rate_id] as rate_id
       ,[yr] as "Year"
-      ,[age]
-      ,[race]
-      ,[birth_rate]
+      ,CASE
+            WHEN race = 'B' THEN 'Black'
+            WHEN race = 'H' THEN 'Hispanic'
+            WHEN race = 'S' THEN 'Asian'
+            WHEN race = 'W' THEN 'White'
+            WHEN race = 'O' THEN 'Other' ELSE 'None' END as race
+      ,sum([birth_rate]) as fertility_rates
       FROM [isam].[demographic_rates].[birth_rates]
-      ORDER BY yr
+      GROUP BY yr, race, birth_rate_id
+	  ORDER BY race, yr
+
       '''
 
 
 birth_df = pd.read_sql(birth_sql, sql_in_engine, index_col=None)
 rate_id_cat = birth_df.rate_id.unique()
-age_cat = birth_df.age.unique()
 race_cat = birth_df.race.unique()
 
 
@@ -298,28 +303,44 @@ def my_form_post_brith_rates():
 
     # Determine the selected feature
     current_rate_id = request.args.get("rate")
-    current_age = request.args.get("age")
-    current_race = request.args.get("race")
+    current_race_list = request.args.getlist("race_list1")
 
     if current_rate_id is None:
         current_rate_id = 101
 
-    if current_age is None:
-        current_age = 10
-
-    if current_race is None:
-        current_race = 'W'
+    if len(current_race_list) == 0:
+        current_race_list = race_cat
 
     # Create the plot
-    plot1 = create_figure_rate(birth_df, rate_id=int(current_rate_id), age=int(current_age), race=str(current_race),
-                               column_name='birth_rate')
     # Embed plot into HTML via Flask Render
     # grab the static resources
     js_resources = INLINE.render_js()
     css_resources = INLINE.render_css()
+    name_str = " "
+    for r in current_race_list:
+        name_str = name_str + str(r) + ", "
+    p2 = figure(width=600, height=400, tools=[BoxZoomTool(), WheelZoomTool(), PanTool(), SaveTool()],
+                title=str(name_str), x_axis_label="Year", y_axis_label="Fertility Rates")
+
+    for r, color in zip(current_race_list, Spectral4):
+        df = birth_df.loc[(birth_df.rate_id == int(current_rate_id)) & (birth_df.race == r)]
+        p2.line(df.Year.tolist(), df['fertility_rates'], line_width=2, legend=r, color=color)
+        p2.yaxis[0].formatter = NumeralTickFormatter(format="0,0.0")
+        source = ColumnDataSource(
+            {'x': df.Year.tolist(), 'y': df['fertility_rates'], 'y2': df['fertility_rates'].map('{:,.2}'.format).tolist()})
+
+        p2.scatter('x', 'y', source=source, fill_alpha=0, line_alpha=.95, line_color="black", fill_color="blue",
+                   name='scat')
+        hover = HoverTool(names=["scat"],
+                          tooltips=[("Year ", "@x"), ("fertility_rates", "@y2"), ("Race", r)]
+                          )
+
+    p2.legend.location = "top_right"
+    p2.legend.background_fill_alpha = 0.25
+    p2.add_tools(hover)
 
     # render template
-    script, div = components(plot1)
+    script, div = components(row(p2))
     html = render_template(
         'birth-rates.html',
         plot_script=script,
@@ -328,12 +349,12 @@ def my_form_post_brith_rates():
         css_resources=css_resources,
         rate_id_list=rate_id_cat,
         current_rate_id=current_rate_id,
-        age_list=age_cat,
-        current_age=current_age,
         race_list=race_cat,
-        current_race=current_race
+        current_race_list=current_race_list
     )
     return html
+
+
 if __name__ == '__main__':
     shutil.rmtree('temp')
     os.makedirs('temp')
