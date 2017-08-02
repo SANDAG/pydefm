@@ -23,7 +23,7 @@ from db import sql
 from bokeh.resources import INLINE
 from bokeh.plotting import figure
 from pysandag import database
-from bokeh.palettes import magma
+from bokeh.palettes import plasma
 from bokeh.layouts import row
 import warnings
 warnings.filterwarnings('ignore', category=pandas.io.pytables.PerformanceWarning)
@@ -172,11 +172,11 @@ def my_form_post_pop():
 
 
 race_sql = '''SELECT  yr as "Year",
-        SUM(CASE WHEN race_ethn = 'B' THEN persons ELSE 0 END) as "Black",
+        SUM(CASE WHEN race_ethn = 'B' THEN persons ELSE 0 END) as "Black (NH)",
         SUM(CASE WHEN race_ethn = 'H' THEN persons ELSE 0 END) as "Hispanic",
-        SUM(CASE WHEN race_ethn = 'S' THEN persons ELSE 0 END) as "Asian",
-        SUM(CASE WHEN race_ethn = 'W' THEN persons ELSE 0 END) as "White",
-        SUM(CASE WHEN race_ethn = 'O' THEN persons ELSE 0 END) as "Other"
+        SUM(CASE WHEN race_ethn = 'S' THEN persons ELSE 0 END) as "Asian (NH)",
+        SUM(CASE WHEN race_ethn = 'W' THEN persons ELSE 0 END) as "White (NH)",
+        SUM(CASE WHEN race_ethn = 'O' THEN persons ELSE 0 END) as "Other (NH)"
         FROM defm.population
         WHERE run_id=''' + str(run_id) + ''' and yr >2010 GROUP BY yr  ORDER BY yr'''
 
@@ -188,37 +188,52 @@ race_cat1 = race_df.columns[0:].values.tolist()
 def my_form_post_pop_by_race():
 
     # Determine the selected feature
-    current_feature_name = request.args.get("feature_name")
+    current_race_list = request.args.getlist("race_list1")
 
-    if current_feature_name is None:
-        current_feature_name = "White"
+    if len(current_race_list) == 0:
+        current_race_list = race_cat1
 
     # Create the plot
-    plot1 = create_figure(race_df, current_feature_name)
     # Embed plot into HTML via Flask Render
     # grab the static resources
     js_resources = INLINE.render_js()
     css_resources = INLINE.render_css()
-    p2 = figure(width=600, height=400, tools=[BoxZoomTool(), WheelZoomTool(), PanTool(), SaveTool()],
-               title="All Races",  x_axis_label="Year")
+    name_str = "Graph includes "
+    for r in current_race_list:
+        name_str = name_str + str(r) + ", "
 
-    for r, color in zip(race_cat1, magma(5)):
+    p2 = figure(width=600, height=400, tools=[BoxZoomTool(), WheelZoomTool(), PanTool(), SaveTool()],
+                title=name_str[:-2], x_axis_label="Year")
+
+    for r, color in zip(current_race_list, plasma(len(current_race_list))):
         p2.line(race_df.index.tolist(), race_df[r], line_width=2, legend=r, color=color)
         p2.yaxis[0].formatter = NumeralTickFormatter(format="0,0.0")
+        source = ColumnDataSource(
+            {'x': race_df.index.values.tolist(), 'y': race_df[r].values,
+             'y2': race_df[r].map('{:,.0f}'.format).tolist()})
 
-    p2.legend.location = "top_left"
-    p2.legend.background_fill_alpha = 0.5
+        p2.scatter('x', 'y', source=source, fill_alpha=0, line_alpha=.95, line_color="black", fill_color="blue",
+                   name='scat' + r)
+
+        hover = HoverTool(names=["scat" + r],
+                          tooltips=[("Year ", "@x"), ("Population", "@y2"),  ("Race", r)]
+                          )
+        p2.add_tools(hover)
+        p2.yaxis[0].formatter = NumeralTickFormatter(format="0,0.0")
+
+    p2.legend.location = "top_right"
+    p2.legend.background_fill_alpha = 0.1
 
     # render template
-    script, div = components(row(plot1, p2))
+    script, div = components(row(p2))
     html = render_template(
         'result-form-pop-race.html',
         plot_script=script,
         plot_div=div,
         js_resources=js_resources,
         css_resources=css_resources,
-        feature_names=race_cat1,
-        current_feature_name=current_feature_name
+        race_list=race_cat1,
+        current_race_list=current_race_list
     )
     return html
 
@@ -280,17 +295,15 @@ def my_form_post_econ():
 birth_sql = '''SELECT [birth_rate_id] as rate_id
       ,[yr] as "Year"
       ,CASE
-            WHEN race = 'B' THEN 'Black'
+            WHEN race = 'B' THEN 'Black (NH)'
             WHEN race = 'H' THEN 'Hispanic'
-            WHEN race = 'S' THEN 'Asian'
-            WHEN race = 'W' THEN 'White'
-            WHEN race = 'O' THEN 'Other' ELSE 'None' END as race
+            WHEN race = 'S' THEN 'Asian (NH)'
+            WHEN race = 'W' THEN 'White (NH)'
+            WHEN race = 'O' THEN 'Other (NH)' ELSE 'None' END as race
       ,sum([birth_rate]) as fertility_rates
       FROM [isam].[demographic_rates].[birth_rates]
       GROUP BY yr, race, birth_rate_id
-	  ORDER BY race, yr
-
-      '''
+      ORDER BY race, yr '''
 
 
 birth_df = pd.read_sql(birth_sql, sql_in_engine, index_col=None)
@@ -320,9 +333,9 @@ def my_form_post_brith_rates():
     for r in current_race_list:
         name_str = name_str + str(r) + ", "
     p2 = figure(width=600, height=400, tools=[BoxZoomTool(), WheelZoomTool(), PanTool(), SaveTool()],
-                title=str(name_str), x_axis_label="Year", y_axis_label="Fertility Rates")
+                title=name_str[:-2], x_axis_label="Year", y_axis_label="Fertility Rates")
 
-    for r, color in zip(current_race_list, magma(5)):
+    for r, color in zip(current_race_list, plasma(len(current_race_list))):
         df = birth_df.loc[(birth_df.rate_id == int(current_rate_id)) & (birth_df.race == r)]
         p2.line(df.Year.tolist(), df['fertility_rates'], line_width=2, legend=r, color=color)
         p2.yaxis[0].formatter = NumeralTickFormatter(format="0,0.0")
@@ -355,6 +368,96 @@ def my_form_post_brith_rates():
     return html
 
 
+death_sql = '''SELECT [death_rate_id] as rate_id
+      ,[yr] as "Year"
+      ,[age]
+      ,CASE
+            WHEN [race]+[sex] = 'BF' THEN 'Black (NH) - Female'
+            WHEN [race]+[sex] = 'BM' THEN 'Black (NH) - Male'
+            WHEN [race]+[sex]= 'HF' THEN 'Hispanic - Female'
+            WHEN [race]+[sex]= 'HM' THEN 'Hispanic - Male'
+            WHEN [race]+[sex] = 'SF' THEN 'Asian (NH) - Female'
+            WHEN [race]+[sex] = 'SM' THEN 'Asian (NH) - Male'
+            WHEN [race]+[sex] = 'WF' THEN 'White (NH) - Female'
+            WHEN [race]+[sex] = 'WM' THEN 'White (NH) - Male'
+            WHEN [race]+[sex] = 'OF' THEN 'Other (NH) - Female'
+            WHEN [race]+[sex] = 'OM' THEN 'Other (NH) - Male' ELSE 'None' END as race
+      ,[death_rate]
+  FROM [isam].[demographic_rates].[death_rates]
+  WHERE age < 100
+  ORDER BY age, yr'''
+
+
+death_df = pd.read_sql(death_sql, sql_in_engine, index_col=None)
+death_rate_id_cat = death_df.rate_id.unique()
+death_year_cat = death_df.Year.unique()
+death_race_cat = death_df.race.unique()
+
+
+@app.route('/death_rates')
+def my_form_post_death_rates():
+
+    # Determine the selected feature
+    current_rate_id = request.args.get("rate")
+    current_year_id = request.args.get("year")
+    current_race_list = request.args.getlist("race_list1")
+
+    if current_rate_id is None:
+        current_rate_id = 101
+
+    if current_year_id is None:
+        current_year_id = death_year_cat.min()
+
+    if len(current_race_list) == 0:
+        current_race_list = death_race_cat
+
+    # Create the plot
+    # Embed plot into HTML via Flask Render
+    # grab the static resources
+    js_resources = INLINE.render_js()
+    css_resources = INLINE.render_css()
+    name_str = " "
+    for r in current_race_list:
+        name_str = name_str + str(r) + ", "
+    p2 = figure(width=800, height=600, tools=[BoxZoomTool(), WheelZoomTool(), PanTool(), SaveTool()],
+                title=name_str[:-2], x_axis_label="Age", y_axis_label="Death Rate")
+
+    for r, color in zip(current_race_list, plasma(len(current_race_list))):
+        df = death_df.loc[(death_df.rate_id == int(current_rate_id)) & (death_df.race == r) &
+                          (death_df.Year == int(current_year_id))]
+
+        p2.line(df.age.tolist(), df['death_rate'], line_width=2, legend=r, color=color)
+        p2.yaxis[0].formatter = NumeralTickFormatter(format="0,0.0000")
+        source = ColumnDataSource(
+            {'x': df.age.tolist(), 'y': df['death_rate'], 'y2': df['death_rate'].map('{:,.2}'.format).tolist()})
+
+        p2.scatter('x', 'y', source=source, fill_alpha=0, line_alpha=.95, line_color="black", fill_color="blue",
+                   name='scat' + str(r))
+        hover = HoverTool(names=["scat" + str(r)],
+                          tooltips=[("Age ", "@x"), ("Death Rates", "@y2"), ("Race", r), ("Year", str(current_year_id))]
+                          )
+        p2.add_tools(hover)
+
+    p2.legend.location = "top_left"
+    p2.legend.background_fill_alpha = 0.25
+    p2.toolbar.logo = None
+
+    # render template
+    script, div = components(row(p2))
+    html = render_template(
+        'death-rates.html',
+        plot_script=script,
+        plot_div=div,
+        js_resources=js_resources,
+        css_resources=css_resources,
+        year_list=death_year_cat,
+        current_year_id=current_year_id,
+        rate_id_list=rate_id_cat,
+        current_rate_id=current_rate_id,
+        race_list=death_race_cat,
+        current_race_list=current_race_list
+    )
+    return html
 if __name__ == '__main__':
     shutil.rmtree('temp')
     os.makedirs('temp')
