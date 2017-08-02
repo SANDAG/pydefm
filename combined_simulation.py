@@ -23,7 +23,7 @@ from db import sql
 from bokeh.resources import INLINE
 from bokeh.plotting import figure
 from pysandag import database
-from bokeh.palettes import Spectral4
+from bokeh.palettes import magma
 from bokeh.layouts import row
 import warnings
 warnings.filterwarnings('ignore', category=pandas.io.pytables.PerformanceWarning)
@@ -136,7 +136,7 @@ results_sql = '''SELECT "Population" as "Population"
                         ,mig_in - mig_out as "Net Migration"
                         ,new_born as "Births"
                 FROM defm.population_summary
-                WHERE "Run_id" =''' + str(run_id) + ''' and yr >2010 ORDER BY "Year" '''
+                WHERE "Run_id" =''' + str(run_id) + ''' and "Year"  >2010 ORDER BY "Year" '''
 results_df = pd.read_sql(results_sql, defm_engine, index_col='Year')
 feature_names = results_df.columns[0:].values.tolist()
 
@@ -202,7 +202,7 @@ def my_form_post_pop_by_race():
     p2 = figure(width=600, height=400, tools=[BoxZoomTool(), WheelZoomTool(), PanTool(), SaveTool()],
                title="All Races",  x_axis_label="Year")
 
-    for r, color in zip(race_cat1, Spectral4):
+    for r, color in zip(race_cat1, magma(5)):
         p2.line(race_df.index.tolist(), race_df[r], line_width=2, legend=r, color=color)
         p2.yaxis[0].formatter = NumeralTickFormatter(format="0,0.0")
 
@@ -322,7 +322,7 @@ def my_form_post_brith_rates():
     p2 = figure(width=600, height=400, tools=[BoxZoomTool(), WheelZoomTool(), PanTool(), SaveTool()],
                 title=str(name_str), x_axis_label="Year", y_axis_label="Fertility Rates")
 
-    for r, color in zip(current_race_list, Spectral4):
+    for r, color in zip(current_race_list, magma(5)):
         df = birth_df.loc[(birth_df.rate_id == int(current_rate_id)) & (birth_df.race == r)]
         p2.line(df.Year.tolist(), df['fertility_rates'], line_width=2, legend=r, color=color)
         p2.yaxis[0].formatter = NumeralTickFormatter(format="0,0.0")
@@ -330,14 +330,14 @@ def my_form_post_brith_rates():
             {'x': df.Year.tolist(), 'y': df['fertility_rates'], 'y2': df['fertility_rates'].map('{:,.2}'.format).tolist()})
 
         p2.scatter('x', 'y', source=source, fill_alpha=0, line_alpha=.95, line_color="black", fill_color="blue",
-                   name='scat')
-        hover = HoverTool(names=["scat"],
-                          tooltips=[("Year ", "@x"), ("fertility_rates", "@y2"), ("Race", r)]
+                   name='scat' + str(r))
+        hover = HoverTool(names=["scat" + str(r)],
+                          tooltips=[("Year ", "@x"), ("Fertility Rates", "@y2"), ("Race", r)]
                           )
+        p2.add_tools(hover)
 
     p2.legend.location = "top_right"
     p2.legend.background_fill_alpha = 0.25
-    p2.add_tools(hover)
 
     # render template
     script, div = components(row(p2))
