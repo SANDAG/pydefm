@@ -87,7 +87,6 @@ def my_form():
     econs = econ_sim_ids['economic_simulation_id'].tolist()
     startyear = range(2011, 2050)
     endyear = range(2012, 2051)
-    print dems
     return render_template("my-form.html", result1=dems, result2=econs, startyear=startyear, endyear=endyear)
 
 
@@ -150,23 +149,26 @@ def my_form_post_pop():
     if current_feature_name is None:
         current_feature_name = "Population"
 
-    # Create the plot
-    plot1 = create_figure(results_df, current_feature_name)
-    # Embed plot into HTML via Flask Render
-    # grab the static resources
-    js_resources = INLINE.render_js()
-    css_resources = INLINE.render_css()
+    listx= results_df.index.values.tolist()
+    new_list = []
+    for item in listx:
+        new_list.append(str(item))
+    listy= results_df[current_feature_name].tolist()
+    new_list2 = []
+    for item in listy:
+        new_list2.append(int(item))
 
+    chart = {"renderTo": 'chart_ID', "type": 'line', "height": 450}
+    series = [{"name": str(current_feature_name), "data": new_list2}]
+    title = {"text": str(current_feature_name) + ' Trends'}
+    xAxis = {"title": {"text": 'Year'}, "categories": new_list}
+    yAxis = {"title": {"text": 'Persons'}}
     # render template
-    script, div = components(plot1)
     html = render_template(
         'result-form.html',
-        plot_script=script,
-        plot_div=div,
-        js_resources=js_resources,
-        css_resources=css_resources,
         feature_names=feature_names,
-        current_feature_name=current_feature_name
+        current_feature_name=current_feature_name,
+        chartID='chart_ID', chart=chart, series=series, title=title, xAxis=xAxis, yAxis=yAxis
     )
     return html
 
@@ -272,23 +274,26 @@ def my_form_post_econ():
     if current_feature_name is None:
         current_feature_name = "personal_income"
 
-    # Create the plot
-    plot1 = create_figure(econ_df, current_feature_name)
-    # Embed plot into HTML via Flask Render
-    # grab the static resources
-    js_resources = INLINE.render_js()
-    css_resources = INLINE.render_css()
+    listx = econ_df.index.values.tolist()
+    new_list = []
+    for item in listx:
+        new_list.append(str(item))
+    listy = econ_df[current_feature_name].tolist()
+    new_list2 = []
+    for item in listy:
+        new_list2.append(float(item))
 
+    chart = {"renderTo": 'chart_ID', "type": 'line', "height": 450}
+    series = [{"name": str(current_feature_name), "data": new_list2}]
+    title = {"text": str(current_feature_name) + ' Trends'}
+    xAxis = {"title": {"text": 'Year'}, "categories": new_list}
+    yAxis = {"title": {"text": 'Count / Persons'}}
     # render template
-    script, div = components(plot1)
     html = render_template(
         'result-form-econ.html',
-        plot_script=script,
-        plot_div=div,
-        js_resources=js_resources,
-        css_resources=css_resources,
         feature_names=econ_cat,
-        current_feature_name=current_feature_name
+        current_feature_name=current_feature_name,
+        chartID='chart_ID', chart=chart, series=series, title=title, xAxis=xAxis, yAxis=yAxis
     )
     return html
 
