@@ -14,19 +14,11 @@ import luigi.contrib.hadoop
 from sqlalchemy import create_engine
 from pysandag.database import get_connection_string
 import pandas as pd
-from bokeh.models import (
-    ColumnDataSource, HoverTool, BoxZoomTool, WheelZoomTool, PanTool, SaveTool, NumeralTickFormatter
-)
-from bokeh.charts import TimeSeries
-from bokeh.embed import components
 from db import sql
-from bokeh.resources import INLINE
-from bokeh.plotting import figure
 from pysandag import database
-from bokeh.palettes import plasma
-from bokeh.layouts import row
 import warnings
 warnings.filterwarnings('ignore', category=pandas.io.pytables.PerformanceWarning)
+
 defm_engine = create_engine(get_connection_string("model_config.yml", 'output_database'))
 
 db_connection_string = database.get_connection_string('model_config.yml', 'in_db')
@@ -59,25 +51,6 @@ class CombinedSimulation(luigi.Task):
 app = Flask(__name__)
 
 
-def create_figure(df, current_feature_name):
-    p = figure(width=600, height=400, tools=[BoxZoomTool(), WheelZoomTool(), PanTool(), SaveTool()],
-               title=current_feature_name, y_axis_label=current_feature_name,
-                 x_axis_label="Year")
-    p.line(df.index.tolist(), df[current_feature_name], line_width=2, legend=False, line_color="red")
-
-    source = ColumnDataSource(
-        {'x': df.index.values.tolist(), 'y': df[current_feature_name].values, 'y2': df[current_feature_name].map('{:,.0f}'.format).tolist()})
-
-    p.scatter('x', 'y', source=source, fill_alpha=0, line_alpha=.95, line_color="black", fill_color="blue", name='scat')
-    hover = HoverTool(names=["scat"],
-                      tooltips=[("Year ", "@x"), (current_feature_name, "@y2")]
-                      )
-    p.add_tools(hover)
-    p.yaxis[0].formatter = NumeralTickFormatter(format="0,0.0")
-
-    return p
-
-
 @app.route('/')
 def my_form():
 
@@ -88,27 +61,6 @@ def my_form():
     startyear = range(2011, 2050)
     endyear = range(2012, 2051)
     return render_template("my-form.html", result1=dems, result2=econs, startyear=startyear, endyear=endyear)
-
-
-def create_figure_rate(df, rate_id, race, column_name):
-
-    df = df.loc[(df.rate_id == rate_id) & (df.race == race)]
-
-    p = figure(width=600, height=400, tools=[BoxZoomTool(), WheelZoomTool(), PanTool(), SaveTool()],
-               title=column_name, y_axis_label=column_name, x_axis_label="Year")
-
-    p.line(df.Year.tolist(), df[column_name], line_width=2, legend=False, line_color="red")
-
-    source = ColumnDataSource(
-        {'x': df.Year.tolist(), 'y': df[column_name].values, 'y2': df[column_name].map('{:,.5}'.format).tolist()})
-
-    p.scatter('x', 'y', source=source, fill_alpha=0, line_alpha=.95, line_color="black", fill_color="blue", name='scat')
-    hover = HoverTool(names=["scat"],
-                      tooltips=[("Year ", "@x"), (column_name, "@y2")]
-                      )
-    p.add_tools(hover)
-    p.yaxis[0].formatter = NumeralTickFormatter(format="0.00")
-    return p
 
 
 @app.route('/', methods=['POST'])
@@ -195,47 +147,29 @@ def my_form_post_pop_by_race():
     if len(current_race_list) == 0:
         current_race_list = race_cat1
 
-    # Create the plot
-    # Embed plot into HTML via Flask Render
-    # grab the static resources
-    js_resources = INLINE.render_js()
-    css_resources = INLINE.render_css()
-    name_str = "Graph includes "
-    for r in current_race_list:
-        name_str = name_str + str(r) + ", "
+    listx = race_df.index.values.tolist()
+    new_list = []
+    for item in listx:
+        new_list.append(str(item))
 
-    p2 = figure(width=600, height=400, tools=[BoxZoomTool(), WheelZoomTool(), PanTool(), SaveTool()],
-                title=name_str[:-2], x_axis_label="Year")
+    series = []
+    for x in current_race_list:
+        listy = race_df[str(x)].tolist()
+        new_list2 = []
+        for item in listy:
+            new_list2.append(float(item))
+        series.append({"name": str(x), "data": new_list2})
 
-    for r, color in zip(current_race_list, plasma(len(current_race_list))):
-        p2.line(race_df.index.tolist(), race_df[r], line_width=2, legend=r, color=color)
-        p2.yaxis[0].formatter = NumeralTickFormatter(format="0,0.0")
-        source = ColumnDataSource(
-            {'x': race_df.index.values.tolist(), 'y': race_df[r].values,
-             'y2': race_df[r].map('{:,.0f}'.format).tolist()})
-
-        p2.scatter('x', 'y', source=source, fill_alpha=0, line_alpha=.95, line_color="black", fill_color="blue",
-                   name='scat' + r)
-
-        hover = HoverTool(names=["scat" + r],
-                          tooltips=[("Year ", "@x"), ("Population", "@y2"),  ("Race", r)]
-                          )
-        p2.add_tools(hover)
-        p2.yaxis[0].formatter = NumeralTickFormatter(format="0,0.0")
-
-    p2.legend.location = "top_right"
-    p2.legend.background_fill_alpha = 0.1
-
+    chart = {"renderTo": 'chart_ID', "type": 'line', "height": 600, "width": 1000}
+    title = {"text": 'Population by Race Trends'}
+    xAxis = {"title": {"text": 'Year'}, "categories": new_list}
+    yAxis = {"title": {"text": 'Count / Persons'}}
     # render template
-    script, div = components(row(p2))
     html = render_template(
         'result-form-pop-race.html',
-        plot_script=script,
-        plot_div=div,
-        js_resources=js_resources,
-        css_resources=css_resources,
         race_list=race_cat1,
-        current_race_list=current_race_list
+        current_race_list=current_race_list,
+        chartID='chart_ID', chart=chart, series=series, title=title, xAxis=xAxis, yAxis=yAxis
     )
     return html
 
@@ -329,46 +263,32 @@ def my_form_post_brith_rates():
     if len(current_race_list) == 0:
         current_race_list = race_cat
 
-    # Create the plot
-    # Embed plot into HTML via Flask Render
-    # grab the static resources
-    js_resources = INLINE.render_js()
-    css_resources = INLINE.render_css()
-    name_str = " "
-    for r in current_race_list:
-        name_str = name_str + str(r) + ", "
-    p2 = figure(width=600, height=400, tools=[BoxZoomTool(), WheelZoomTool(), PanTool(), SaveTool()],
-                title=name_str[:-2], x_axis_label="Year", y_axis_label="Fertility Rates")
+    listx = birth_df.Year.unique()
+    new_list = []
+    for item in listx:
+        new_list.append(str(item))
 
-    for r, color in zip(current_race_list, plasma(len(current_race_list))):
-        df = birth_df.loc[(birth_df.rate_id == int(current_rate_id)) & (birth_df.race == r)]
-        p2.line(df.Year.tolist(), df['fertility_rates'], line_width=2, legend=r, color=color)
-        p2.yaxis[0].formatter = NumeralTickFormatter(format="0,0.0")
-        source = ColumnDataSource(
-            {'x': df.Year.tolist(), 'y': df['fertility_rates'], 'y2': df['fertility_rates'].map('{:,.2}'.format).tolist()})
+    series = []
+    for x in current_race_list:
+        df = birth_df.loc[(birth_df.rate_id == int(current_rate_id)) & (birth_df.race == str(x))]
+        listy = df['fertility_rates'].tolist()
+        new_list2 = []
+        for item in listy:
+            new_list2.append(float(item))
+        series.append({"name": str(x), "data": new_list2})
 
-        p2.scatter('x', 'y', source=source, fill_alpha=0, line_alpha=.95, line_color="black", fill_color="blue",
-                   name='scat' + str(r))
-        hover = HoverTool(names=["scat" + str(r)],
-                          tooltips=[("Year ", "@x"), ("Fertility Rates", "@y2"), ("Race", r)]
-                          )
-        p2.add_tools(hover)
-
-    p2.legend.location = "top_right"
-    p2.legend.background_fill_alpha = 0.25
-
+    chart = {"renderTo": 'chart_ID', "type": 'line', "height": 600, "width": 1000}
+    title = {"text": 'Fertility Rates by Race'}
+    xAxis = {"title": {"text": 'Year'}, "categories": new_list}
+    yAxis = {"title": {"text": 'Fertility Rates'}}
     # render template
-    script, div = components(row(p2))
     html = render_template(
         'birth-rates.html',
-        plot_script=script,
-        plot_div=div,
-        js_resources=js_resources,
-        css_resources=css_resources,
         rate_id_list=rate_id_cat,
         current_rate_id=current_rate_id,
         race_list=race_cat,
-        current_race_list=current_race_list
+        current_race_list=current_race_list,
+        chartID='chart_ID', chart=chart, series=series, title=title, xAxis=xAxis, yAxis=yAxis
     )
     return html
 
@@ -416,53 +336,39 @@ def my_form_post_death_rates():
     if len(current_race_list) == 0:
         current_race_list = death_race_cat
 
-    # Create the plot
-    # Embed plot into HTML via Flask Render
-    # grab the static resources
-    js_resources = INLINE.render_js()
-    css_resources = INLINE.render_css()
-    name_str = " "
-    for r in current_race_list:
-        name_str = name_str + str(r) + ", "
-    p2 = figure(width=800, height=600, tools=[BoxZoomTool(), WheelZoomTool(), PanTool(), SaveTool()],
-                title=name_str[:-2], x_axis_label="Age", y_axis_label="Death Rate")
+    listx = death_df.Year.unique()
+    new_list = []
+    for item in listx:
+        new_list.append(str(item))
 
-    for r, color in zip(current_race_list, plasma(len(current_race_list))):
-        df = death_df.loc[(death_df.rate_id == int(current_rate_id)) & (death_df.race == r) &
+    series = []
+    for x in current_race_list:
+        df = death_df.loc[(death_df.rate_id == int(current_rate_id)) & (death_df.race == x) &
                           (death_df.Year == int(current_year_id))]
 
-        p2.line(df.age.tolist(), df['death_rate'], line_width=2, legend=r, color=color)
-        p2.yaxis[0].formatter = NumeralTickFormatter(format="0,0.0000")
-        source = ColumnDataSource(
-            {'x': df.age.tolist(), 'y': df['death_rate'], 'y2': df['death_rate'].map('{:,.2}'.format).tolist()})
+        listy = df['death_rate'].tolist()
+        new_list2 = []
+        for item in listy:
+            new_list2.append(float(item))
+        series.append({"name": str(x), "data": new_list2})
 
-        p2.scatter('x', 'y', source=source, fill_alpha=0, line_alpha=.95, line_color="black", fill_color="blue",
-                   name='scat' + str(r))
-        hover = HoverTool(names=["scat" + str(r)],
-                          tooltips=[("Age ", "@x"), ("Death Rates", "@y2"), ("Race", r), ("Year", str(current_year_id))]
-                          )
-        p2.add_tools(hover)
-
-    p2.legend.location = "top_left"
-    p2.legend.background_fill_alpha = 0.25
-    p2.toolbar.logo = None
-
+    chart = {"renderTo": 'chart_ID', "type": 'line', "height": 600, "width": 1000}
+    title = {"text": 'Death Rates by Race'}
+    xAxis = {"title": {"text": 'Year'}, "categories": new_list}
+    yAxis = {"title": {"text": 'Death Rates'}}
     # render template
-    script, div = components(row(p2))
     html = render_template(
         'death-rates.html',
-        plot_script=script,
-        plot_div=div,
-        js_resources=js_resources,
-        css_resources=css_resources,
         year_list=death_year_cat,
         current_year_id=current_year_id,
         rate_id_list=rate_id_cat,
         current_rate_id=current_rate_id,
         race_list=death_race_cat,
-        current_race_list=current_race_list
+        current_race_list=current_race_list,
+        chartID='chart_ID', chart=chart, series=series, title=title, xAxis=xAxis, yAxis=yAxis
     )
     return html
+
 if __name__ == '__main__':
     shutil.rmtree('temp')
     os.makedirs('temp')
