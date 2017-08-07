@@ -4,7 +4,6 @@ $(document).ready(function() {
 		title: title,
 		xAxis: xAxis,
 		yAxis: yAxis,
-		plotOptions: plotOptions,
 		series: series
 	});
 });

@@ -160,16 +160,24 @@ def my_form_post_pop_by_race():
             new_list2.append(float(item))
         series.append({"name": str(x), "data": new_list2})
 
-    chart = {"renderTo": 'chart_ID', "type": 'line', "height": 600, "width": 1000}
+    chart = {"renderTo": 'chart_ID', "type": 'area', "height": 600, "width": 1000}
     title = {"text": 'Population by Race Trends'}
     xAxis = {"title": {"text": 'Year'}, "categories": new_list}
     yAxis = {"title": {"text": 'Count / Persons'}}
+
+    plotOptions = {"area": {"stacking": 'percent'},  "lineColor": '#ffffff',
+            "lineWidth": '1',
+            "marker": {
+                "lineWidth": '1',
+                "lineColor": '#ffffff'
+            }
+        }
     # render template
     html = render_template(
         'result-form-pop-race.html',
         race_list=race_cat1,
         current_race_list=current_race_list,
-        chartID='chart_ID', chart=chart, series=series, title=title, xAxis=xAxis, yAxis=yAxis
+        chartID='chart_ID', chart=chart, series=series, title=title, xAxis=xAxis, yAxis=yAxis, plotOptions=plotOptions
     )
     return html
 
