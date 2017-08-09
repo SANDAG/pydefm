@@ -263,7 +263,7 @@ SELECT [ur1_id]
 
 dem_sim_ids = '''
 SELECT [demographic_simulation_id],
-        desc_short
+        'ID: ' + cast([demographic_simulation_id] as nvarchar)+ ', Description: ' + desc_short as desc_short
   FROM %s
   WHERE demographic_simulation_id != %s
   ORDER BY [demographic_simulation_id]'''
